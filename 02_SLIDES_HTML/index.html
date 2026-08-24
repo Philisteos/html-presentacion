@@ -67,9 +67,9 @@
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--accent);text-transform:uppercase;margin-bottom:16px}
   .panel h2{font-family:var(--font-display);font-stretch:condensed;font-size:clamp(26px,calc(var(--sw,100vw)*0.034),46px);line-height:1.02;letter-spacing:.005em;text-transform:uppercase;margin-bottom:16px;text-wrap:balance;font-weight:700}
   .panel p{font-size:14.5px;line-height:1.65;color:var(--dim-cobalt);max-width:44ch}
-  #btnExplode,#btnMont{margin-top:20px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--white);
+  #btnExplode,#btnMont,#btnTerm{margin-top:20px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--white);
     background:rgba(255,255,255,.06);border:1px solid var(--line-cobalt);padding:11px 16px;cursor:pointer;transition:.18s}
-  #btnExplode:hover,#btnMont:hover{border-color:var(--accent);color:var(--accent)}
+  #btnExplode:hover,#btnMont:hover,#btnTerm:hover{border-color:var(--accent);color:var(--accent)}
   /* HUD de fase del montaje 4D (estilo SynchroPro + cota) */
   #montHud{position:fixed;left:34px;bottom:78px;z-index:40;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .25s}
   #montHud .msegs{display:flex;gap:5px;margin-top:9px}
@@ -96,6 +96,23 @@
   .pcap .pln::after{right:-3px}
   .pcap b{display:block;font-family:var(--mono);font-weight:600;font-size:12.5px;letter-spacing:.04em;color:var(--white)}
   .pcap small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim-cobalt);margin-top:3px}
+  /* slide 07 · acto 2: certificación térmica */
+  #termWrap{position:fixed;right:4%;top:50%;transform:translateY(-50%);width:52%;z-index:26;
+    opacity:0;pointer-events:none;display:flex;flex-direction:column;gap:14px}
+  #termWrap .tHead u{display:block;text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.28em;color:var(--dim-cobalt)}
+  #termWrap .tHead .ln{display:block;position:relative;height:1px;background:rgba(232,230,224,.8);margin:5px 0 6px}
+  #termWrap .tHead .ln::before,#termWrap .tHead .ln::after{content:'';position:absolute;top:-4px;width:9px;height:1px;background:var(--wire);transform:rotate(-45deg)}
+  #termWrap .tHead .ln::before{left:-3px}
+  #termWrap .tHead .ln::after{right:-3px}
+  #termWrap .tHead b{display:block;font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.04em;color:var(--white)}
+  #termWrap .tHead small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim-cobalt);margin-top:3px}
+  .tGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+  .tCard{display:flex;flex-direction:column;gap:6px;opacity:0;transform:translateY(10px);transition:opacity .5s,transform .5s}
+  .tCard.on{opacity:1;transform:none}
+  .tCard u{text-decoration:none;font-family:var(--mono);font-size:8.5px;letter-spacing:.22em;color:var(--dim-cobalt);
+    border-bottom:1px solid rgba(232,230,224,.22);padding-bottom:5px}
+  .tPlot svg{display:block;width:100%;height:auto}
+  #btnTerm{margin-top:18px}
   /* slide 06: transición A⇄B "industrialización del módulo" */
   #plantaStage{position:relative}
   /* (la altura la fija la regla de arriba) */
@@ -291,7 +308,7 @@
 
 <div id="hud">
   <div class="code">PAC7.0-WSEF</div>
-  <div class="counter"><span class="big"><em id="cur">01</em> / 14</span><small id="chname">PORTADA</small></div>
+  <div class="counter"><span class="big"><em id="cur">01</em> / 13</span><small id="chname">PORTADA</small></div>
 </div>
 
 <div id="track">
@@ -402,10 +419,11 @@
   <section class="slide right" id="s4" data-name="EL MONTAJE" data-ground="navy">
     <div class="panel">
       <div class="kicker">07 — EL MONTAJE</div>
-      <h2>De la base a la cubierta</h2>
+      <h2>De la base a la cubierta, y a norma</h2>
       <p>Secuencia 4D del sistema: tornillos de fundación sin hormigón, vigas aligeradas perforadas, suelo ventilado con resistencia al fuego normativa, módulo volumétrico terminado y fachada inclinada que se proyecta en cubierta. Cada capa se reemplazará por su modelo IFC real.</p>
       <div class="crit"><span>ESTRATEGIA MMC</span><span>ESCALABILIDAD</span></div>
       <button id="btnMont">↻ REPETIR SECUENCIA</button>
+      <button id="btnTerm">CERTIFICACIÓN TÉRMICA →</button>
     </div>
   </section>
 
@@ -431,22 +449,10 @@
     </div>
   </section>
 
-  <!-- 07 LA PIEL · técnica (racimo) -->
-  <section class="slide right" id="s6" data-name="LA PIEL" data-ground="navy">
-    <div class="panel">
-      <div class="kicker">10 — LA PIEL TÉRMICA</div>
-      <h2>Radiografía de la envolvente</h2>
-      <p>Estructura Metalcon + panel SIP + fachada prefabricada StoPanel con terminación continua: la piel unifica los módulos, elimina puentes térmicos en las juntas y supera la nueva exigencia del Art. 4.1.10 OGUC para Zona G.</p>
-      <div class="crit"><span>DISEÑO PASIVO</span><span>INNOVACIÓN TÉCNICA</span></div>
-      <div class="lamina"><div class="ph">CORTE CONSTRUCTIVO / DETALLE JUNTA</div>
-        <div class="meta"><b>Detalles constructivos</b><em class="s3">EN DESARROLLO · S3–S4</em></div></div>
-    </div>
-  </section>
-
   <!-- 09 DETALLES CONSTRUCTIVOS · escantillón -->
   <section class="slide" id="sDET" data-name="DETALLES CONSTRUCTIVOS" data-ground="navy">
     <div class="panel">
-      <div class="kicker">11 — DETALLES CONSTRUCTIVOS</div>
+      <div class="kicker">10 — DETALLES CONSTRUCTIVOS</div>
       <h2>El sistema, al milímetro</h2>
       <p>Escantillón de la envolvente completa: de los tornillos de fundación al remate de cubierta, con cada capa y material del catálogo industrializado. La lámina llegará en DXF con sus grosores reales, por el mismo pipeline de las plantas.</p>
       <div class="crit"><span>INNOVACIÓN TÉCNICA</span><span>DISEÑO PASIVO</span></div>
@@ -490,7 +496,7 @@
   <!-- 11 IMAGEN 02 · render interior -->
   <section class="slide" id="sIMG2" data-name="IMAGEN 02" data-ground="navy">
     <div class="imgWrap">
-      <div class="kicker">13 — IMAGEN</div>
+      <div class="kicker">12 — IMAGEN</div>
       <div class="imgFrame"><i class="ck tl"></i><i class="ck tr"></i><i class="ck bl"></i><i class="ck br"></i>
         <div class="imgPh">RENDER INTERIOR PEATONAL<small>IMAGEN EN PREPARACIÓN · MAQUETA DIGITAL + IA CON TRAZABILIDAD</small></div>
       </div>
@@ -514,8 +520,19 @@
 <div id="anaHit"></div>
 <div id="rotHint"><b>GIRA EL EQUIPO</b> · DECK EN 16:9</div>
 <div id="hint">← DESLIZA / FLECHAS →</div>
-<div id="montHud"><u>FASE 01 · 05</u><i class="ln"></i><b>Tornillos de fundación</b><small>Base prefabricada · sin faena húmeda</small>
+<div id="montHud"><u>FASE 01 · 05</u><i class="ln"></i><b>Pilotes de fundación</b><small>Ecopilote 88,9 × 1600 · sin faena húmeda</small>
   <span class="msegs"><i></i><i></i><i></i><i></i><i></i></span></div>
+<!-- acto 2 de la slide 07: certificación térmica -->
+<div id="termWrap">
+  <div class="tHead"><u>ART. 4.1.10 OGUC · RT 2025 · ZONA G · USO SALUD</u><i class="ln"></i>
+    <b>Cumple sin ayuda de la galería</b><small>NCh 853 · verificado por 3 motores independientes</small></div>
+  <div class="tGrid">
+    <div class="tCard" data-k="u"><u>01 · TRANSMITANCIA U vs LÍMITE</u><div class="tPlot" id="tU"></div></div>
+    <div class="tCard" data-k="g"><u>02 · LA GALERÍA MES A MES (°C)</u><div class="tPlot" id="tG"></div></div>
+    <div class="tCard" data-k="e"><u>03 · PÉRDIDA POR EL MURO (kWh/mes)</u><div class="tPlot" id="tE"></div></div>
+    <div class="tCard" data-k="v"><u>04 · VERANO · ΔT vs m² ABATIBLES</u><div class="tPlot" id="tV"></div></div>
+  </div>
+</div>
 <!-- planta CAD (slide 6): SVG horneado desde DXF, grosores reales -->
 <div id="plantaWrap">
   <div id="plantaStage"><div id="plantaSvg"></div><div id="plantaB"></div>
@@ -561,9 +578,6 @@
 <div class="callout" data-id="anaF_perfil"><u>PERFILES SECUNDARIOS</u><i class="ln"></i><b>100/50 · 80/40</b><small>Costaneras y cierres</small></div>
 <div class="callout" data-id="montaje"><u>MONTAJE</u><i class="ln"></i><b>≈ 2 h por módulo</b><small>Hasta −40% plazo de obra</small></div>
 <div class="callout" data-id="m2"><u>PROGRAMA</u><i class="ln"></i><b>≈ 200 m² · 3 recintos</b><small>Fichas MINSAL</small></div>
-<div class="callout" data-id="muro"><u>TRANSMITANCIA</u><i class="ln"></i><b>Muro U ≤ 0,40 W/m²K</b><small>Rt ≥ 2,50</small></div>
-<div class="callout" data-id="ach"><u>HERMETICIDAD</u><i class="ln"></i><b>5 ACH @ 50 Pa</b></div>
-<div class="callout" data-id="junta"><u>JUNTA ENTRE MÓDULOS</u><i class="ln"></i><b>Sin puente térmico</b><small>Panel continuo sobre módulos</small></div>
 <script src="lib/three.min.js"></script>
 <script src="lib/AsciiEffect.js"></script>
 <script src="lib/gsap.min.js"></script>
@@ -581,7 +595,7 @@
 <script>
 /* ================= ESCENA WIREFRAME (grounds navy) ================= */
 const WIRE=0xe8e6e0, DIM=0xa9c6f5, ACC=0xffb057, GRID=0x5f92e6, RING=0x9cc0f2;
-const COBALT_SLIDES=[0,13];
+const COBALT_SLIDES=[0,12];
 const canvas=document.getElementById('scene');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -875,31 +889,44 @@ modExp.visible=false; scene.add(modExp);
 const MONT_N=['Pilotes de fundación','Vigas aligeradas perforadas','Suelo ventilado','Módulo volumétrico','Fachada inclinada + cubierta'];
 const MONT_S=['Ecopilote 88,9 × 1600 · sin faena húmeda','200/75 y 150/75 · pasos de instalaciones','Emparrillado tubular + losa · cámara ventilada','Muros, ventanas y cubierta · llega terminado','Danpalon 600 · piel proyectada en cubierta'];
 const montG=[], montScrews=[];
-/* ===== MONTAJE 4D (slide 07): geometria IFC real, 5 fases, wireframe de malla completa =====
-   Fuente: crujia_montaje.ifc | 12,16 x 13,39 x 8,03 m | 321.734 aristas
-   Reparto: fundacion 4 · vigas 8 · suelo ventilado 108 · modulo 30 · piel 187 elementos     */
-const MONT_Y=-3.75;              /* el terreno queda a y=0: los pilotes (3,75 m) bajo la grilla */
+/* ===== MONTAJE 4D (slide 07): IFC real en MALLA SOLIDA sombreada, 5 fases =====
+   Fuente: crujia_montaje.ifc | 11,04 x 11,83 x 7,88 m | 385 elementos, 277k triangulos
+   Reparto: fundacion 7 · vigas 11 · suelo ventilado 138 · modulo 58 · piel 171        */
+const MONT_Y=-3.61;              /* el terreno queda a y=0: los pilotes bajo la grilla */
 const MONT_FASES=['fundacion','vigas','suelo','modulo','piel'];
+const MONT_LUZ=new THREE.DirectionalLight(0xffffff,1.15); MONT_LUZ.position.set(-40,70,50);
+const MONT_AMB=new THREE.AmbientLight(0xffffff,0.45);
 (()=>{
+  scene.add(MONT_LUZ, MONT_LUZ.target, MONT_AMB);
+  MONT_LUZ.target.position.set(0,0,0);
   for(const k of MONT_FASES){
-    const d=MONTAJE_DATA[k]; const g=new THREE.Group();
-    if(d){
-      const bv=Uint8Array.from(atob(d.v),c=>c.charCodeAt(0));
-      const be=Uint8Array.from(atob(d.e),c=>c.charCodeAt(0));
+    const d=MONTAJE_DATA[k]; const g=new THREE.Group(); const mats=[];
+    if(d) for(const sub of Object.keys(d)){
+      const m=MONTAJE_META.fases[k][sub];
+      const bv=Uint8Array.from(atob(d[sub].v),c=>c.charCodeAt(0));
+      const bf=Uint8Array.from(atob(d[sub].f),c=>c.charCodeAt(0));
       const vi=new Int16Array(bv.buffer); const pos=new Float32Array(vi.length);
       for(let i=0;i<vi.length;i++) pos[i]=vi[i]/1000;                    /* mm -> m */
       const geo=new THREE.BufferGeometry();
       geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-      geo.setIndex(new THREE.BufferAttribute(new Uint32Array(be.buffer),1));
-      const mt=new THREE.LineBasicMaterial({color:WIRE,transparent:true,opacity:0.9});
-      const ls=new THREE.LineSegments(geo,mt);
-      ls.userData.total=geo.index.count;                                 /* dibujado progresivo */
-      const inner=new THREE.Group(); inner.rotation.x=-Math.PI/2; inner.add(ls);  /* IFC Z-up -> Y-up */
-      g.add(inner);
+      geo.setIndex(new THREE.BufferAttribute(m.i32?new Uint32Array(bf.buffer):new Uint16Array(bf.buffer),1));
+      geo.computeVertexNormals();
+      const dp = sub==='dp';                                            /* Danpalon translucido */
+      const mt=new THREE.MeshLambertMaterial({color:WIRE,transparent:true,
+        opacity:dp?0.32:1,side:THREE.DoubleSide,depthWrite:!dp});
+      mt.userData.o0=mt.opacity;
+      g.add(new THREE.Mesh(geo,mt)); mats.push({mt,c0:mt.color.clone()});
+      if(!dp){                                                          /* contorno fino, como la slide 06 */
+        const em=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.30});
+        em.userData.o0=0.30; mats.push({mt:em,c0:em.color.clone()});
+        g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo,32),em));
+      }
     }
-    g.visible=false; g.position.set(0,MONT_Y,0); scene.add(g);
-    const mats=[]; g.traverse(n=>{if((n.isLine||n.isLineSegments)&&n.material)mats.push({mt:n.material,c0:n.material.color.clone()});});
-    montG.push({g,mats,baseX:0,baseY:MONT_Y,baseZ:0});
+    const inner=new THREE.Group(); inner.rotation.x=-Math.PI/2;         /* IFC Z-up -> Y-up */
+    while(g.children.length) inner.add(g.children[0]);
+    const outer=new THREE.Group(); outer.add(inner);
+    outer.visible=false; outer.position.set(0,MONT_Y,0); scene.add(outer);
+    montG.push({g:outer,mats,baseX:0,baseY:MONT_Y,baseZ:0});
   }
 })();
 const C_ACC=new THREE.Color(ACC), C_WIRE=new THREE.Color(WIRE);
@@ -988,7 +1015,7 @@ function montStart(instant){
 }
 
 const cam={x:-49,y:2.6,z:11,tx:-60,ty:1.6,tz:0};
-const st={heroDraw:0,factoryDraw:0,routeDraw:0,markerDraw:0,truckDraw:0,travel:0,assemble:0,skinExplode:0,replicaScale:0,fill:0,abDraw:0,moduleBorn:0,globe:0,gZoom:0,frameDraw:0,galponIn:0,modExplode:0,montaje:0,anaIn:0,anaZoom:0,plantaIn:0,indus:0,planoIn:0,corteOpen:0};
+const st={heroDraw:0,factoryDraw:0,routeDraw:0,markerDraw:0,truckDraw:0,travel:0,assemble:0,skinExplode:0,replicaScale:0,fill:0,abDraw:0,moduleBorn:0,globe:0,gZoom:0,frameDraw:0,galponIn:0,modExplode:0,montaje:0,termica:0,anaIn:0,anaZoom:0,plantaIn:0,indus:0,planoIn:0,corteOpen:0};
 const SLIDES=[
   {name:'PORTADA',cam:{x:-49,y:2.6,z:11,tx:-60,ty:1.6,tz:0},st:{heroDraw:0}},
   {name:'EL PROBLEMA',cam:{x:-8,y:22,z:42,tx:8,ty:0,tz:0},st:{abDraw:1}},
@@ -999,7 +1026,6 @@ const SLIDES=[
   {name:'EL MONTAJE',cam:{x:126,y:98,z:126,tx:0,ty:0.3,tz:0},fov:4.5,st:{}},  /* secuencia 4D en axo paralela, corrida a la izq. del panel */
   {name:'VIDA INTERIOR',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{plantaIn:1}},  /* planta MINSAL ⇄ módulo */
   {name:'PLANO GENERAL',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{planoIn:1}},   /* planta general + corte desplegable */
-  {name:'LA PIEL',cam:{x:7,y:2.6,z:16,tx:0,ty:1.6,tz:5},st:{skinExplode:1}},
   {name:'DETALLES CONSTRUCTIVOS',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},   /* escantillón (lámina estática) */
   {name:'IMAGEN 01',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},                /* render exterior (placeholder) */
   {name:'IMAGEN 02',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},                /* render interior (placeholder) */
@@ -1017,9 +1043,6 @@ const CALLOUTS=[
   {id:'spech',slide:2,when:()=>st.moduleBorn>0.8,pos:()=>truckRig.localToWorld(new THREE.Vector3(-8.4,5.8,0))},
   {id:'speceje',slide:2,when:()=>st.moduleBorn>0.8,pos:()=>truckRig.localToWorld(new THREE.Vector3(-7.8,0.2,1.95))},
   {id:'montaje',slide:6,when:()=>st.montaje>4.6,px:-160,pos:()=>new THREE.Vector3(2.6,6.1,-2.6)},
-  {id:'muro',slide:9,pos:()=>new THREE.Vector3(-3.5,3.2,6)},
-  {id:'ach',slide:9,pos:()=>new THREE.Vector3(3.5,0.8,7)},
-  {id:'junta',slide:9,pos:()=>new THREE.Vector3(0,2,8.5)},
 ];
 /* anatomia: 3 rotulos en reposo (bajo cada pieza) + familias al ampliar (anclados al centro de la familia) */
 for(let i=0;i<3;i++){
@@ -1099,6 +1122,7 @@ function goTo(i,instant){
   ghost.textContent=String(i+1).padStart(2,'0');
   [...dots.children].forEach((d,k)=>d.classList.toggle('on',k===i));
   if(i===4){const b=document.getElementById('btnExplode'); if(b)b.textContent='▲ EXPLOTAR MÓDULO';}
+  {const b=document.getElementById('btnTerm'); if(b)b.textContent='CERTIFICACIÓN TÉRMICA →';}
   if(i===7){const b=document.getElementById('btnIndus'); if(b)b.textContent='⇄ INDUSTRIALIZACIÓN DEL MÓDULO';}
   if(i===8){const b=document.getElementById('btnCorte'); if(b)b.textContent="▼ DESPLEGAR CORTE A–A'";}
   document.getElementById('hint').style.opacity=i===0?1:0;
@@ -1204,6 +1228,112 @@ document.getElementById('btnCorte').addEventListener('click',()=>{ if(current!==
   gsap.to(st,{corteOpen:open?0:1,duration:1.1,ease:'power2.inOut'});
   document.getElementById('btnCorte').textContent=open?"▼ DESPLEGAR CORTE A–A'":"▲ CERRAR CORTE";
 });
+
+/* ===== CERTIFICACIÓN TÉRMICA (slide 07 · acto 2) =========================
+   Series del INFORME_TERMICO.md · NCh 853 · RT 2025 zona G uso salud.       */
+const TERM = {
+  u: [ /* elemento, U calculada, U máx zona G */
+    ['Muro módulo',      0.376, 0.40],
+    ['Losa ventilada',   0.359, 0.39],
+    ['Cubierta',         0.234, 0.28],
+    ['Piel translúcida', 1.50,  3.00]],
+  meses: ['E','F','M','A','M','J','J','A','S','O','N','D'],
+  te:  [14.3,14.1,12.6,10.4,8.9,7.1,6.4,7.1,8.1,9.6,11.3,13.1],
+  tg:  [22,22,22,22,20.1,16.9,16.3,20.1,22,22,22,22],          /* Tg operativa */
+  tgP: [42.0,37.9,30.3,22.0,17.2,14.4,13.7,16.8,22.8,27.4,33.4,38.9],  /* horquilla */
+  tgO: [74.6,65.6,50.7,35.0,26.3,22.1,21.5,27.4,39.3,47.7,58.9,69.0],
+  cerrado: [0,0,0,0,1,1,1,1,0,0,0,0],
+  sinG: [1059,994,1328,1622,1913,2127,2308,2198,1974,1802,1484,1249],
+  conG: [1023,960,1282,1566,137,606,717,137,1906,1740,1433,1206],
+  vent: [[40,16.9],[60,13.4],[94.8,10.2],[150,7.7],[200,6.4],[300,4.9],[400,4.1],[600,3.2]]
+};
+const T_W=430, T_H=190, T_INK='#e8e6e0', T_DIM='#a9c6f5', T_ACC='#ff8a2b';
+const tSvg=(inner,h)=>`<svg viewBox="0 0 ${T_W} ${h||T_H}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const tTxt=(x,y,t,o={})=>`<text x="${x}" y="${y}" fill="${o.c||T_DIM}" font-family="Consolas,monospace" `+
+  `font-size="${o.s||9}" text-anchor="${o.a||'start'}" letter-spacing="${o.ls||0}">${t}</text>`;
+
+/* 01 · U vs límite: barra de límite en gris, barra calculada encima */
+function plotU(){
+  const L=96, R=T_W-46, H=T_H-26, n=TERM.u.length, bh=20, gap=(H-18)/n;
+  const max=3.0; const esc=v=>L+(R-L)*Math.min(v,max)/max;
+  let g='';
+  TERM.u.forEach(([nm,u,lim],i)=>{
+    const y=14+i*gap;
+    g+=`<rect x="${L}" y="${y}" width="${esc(lim)-L}" height="${bh}" fill="${T_INK}" opacity="0.16"/>`;
+    g+=`<rect x="${L}" y="${y}" width="${esc(u)-L}" height="${bh}" fill="${T_INK}"/>`;
+    g+=`<line x1="${esc(lim)}" y1="${y-3}" x2="${esc(lim)}" y2="${y+bh+3}" stroke="${T_ACC}" stroke-width="1.6"/>`;
+    g+=tTxt(L-8,y+14,nm,{a:'end',c:T_INK,s:9.5});
+    g+=tTxt(esc(u)+6,y+14,u.toFixed(3).replace('.',','),{c:T_INK,s:9.5});
+    g+=tTxt(esc(lim)+5,y-5,'máx '+lim.toFixed(2).replace('.',','),{c:T_ACC,s:7.5});
+  });
+  g+=tTxt(L,T_H-4,'W/m²K — barra clara: exigencia · marca ámbar: límite',{s:8});
+  return tSvg(g);
+}
+/* 02 · galería mes a mes: banda de horquilla + Te vs Tg operativa */
+function plotG(){
+  const L=30,R=T_W-8,T=12,B=T_H-24, lo=0, hi=45;
+  const x=i=>L+(R-L)*i/11, y=v=>B-(B-T)*(v-lo)/(hi-lo);
+  const path=a=>a.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+  let g='';
+  for(const v of [0,10,20,30,40]){ g+=`<line x1="${L}" y1="${y(v)}" x2="${R}" y2="${y(v)}" stroke="${T_INK}" stroke-width="0.5" opacity="0.16"/>`;
+    g+=tTxt(L-4,y(v)+3,v,{a:'end',s:7.5}); }
+  TERM.cerrado.forEach((c,i)=>{ if(c) g+=`<rect x="${x(i)-(R-L)/24}" y="${T}" width="${(R-L)/12}" height="${B-T}" fill="${T_INK}" opacity="0.07"/>`; });
+  const band=TERM.tgP.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ')+' '+
+    TERM.tgO.map((v,i)=>'L'+x(11-i).toFixed(1)+' '+y(TERM.tgO[11-i]).toFixed(1)).join(' ')+' Z';
+  g+=`<path d="${band}" fill="${T_INK}" opacity="0.10"/>`;
+  g+=`<path d="${path(TERM.te)}" fill="none" stroke="${T_DIM}" stroke-width="1.4" stroke-dasharray="4 3"/>`;
+  g+=`<path d="${path(TERM.tg)}" fill="none" stroke="${T_INK}" stroke-width="2.2"/>`;
+  const j=6; g+=`<circle cx="${x(j)}" cy="${y(TERM.tg[j])}" r="3" fill="${T_ACC}"/>`;
+  g+=tTxt(x(j)+7,y(TERM.tg[j])-4,'jul 16,3 °C dentro / 6,4 fuera',{c:T_ACC,s:8});
+  TERM.meses.forEach((m,i)=>g+=tTxt(x(i),T_H-12,m,{a:'middle',s:7.5}));
+  g+=tTxt(L,T_H-2,'línea llena: galería · punteada: exterior · banda: horquilla',{s:8});
+  return tSvg(g);
+}
+/* 03 · energía por el muro: barras pareadas mensuales */
+function plotE(){
+  const L=32,R=T_W-8,T=12,B=T_H-24, max=2400;
+  const x=i=>L+(R-L)*i/12, w=(R-L)/12*0.38, y=v=>B-(B-T)*v/max;
+  let g='';
+  for(const v of [0,1000,2000]){ g+=`<line x1="${L}" y1="${y(v)}" x2="${R}" y2="${y(v)}" stroke="${T_INK}" stroke-width="0.5" opacity="0.16"/>`;
+    g+=tTxt(L-4,y(v)+3,v/1000+'k',{a:'end',s:7.5}); }
+  TERM.sinG.forEach((v,i)=>{
+    g+=`<rect x="${x(i)+2}" y="${y(v)}" width="${w}" height="${B-y(v)}" fill="${T_INK}" opacity="0.28"/>`;
+    const c=TERM.conG[i];
+    g+=`<rect x="${x(i)+2+w}" y="${y(c)}" width="${w}" height="${B-y(c)}" fill="${TERM.cerrado[i]?T_ACC:T_INK}" opacity="${TERM.cerrado[i]?0.95:0.75}"/>`;
+  });
+  TERM.meses.forEach((m,i)=>g+=tTxt(x(i)+2+w,T_H-12,m,{a:'middle',s:7.5}));
+  g+=tTxt(L,T_H-2,'sin galería / con galería · año 20.058 → 12.713 kWh (−37%)',{s:8});
+  return tSvg(g);
+}
+/* 04 · verano: ΔT vs m² abatibles */
+function plotV(){
+  const L=34,R=T_W-10,T=14,B=T_H-24;
+  const xs=TERM.vent.map(v=>v[0]), ys=TERM.vent.map(v=>v[1]);
+  const x=v=>L+(R-L)*(v-40)/(600-40), y=v=>B-(B-T)*(v-0)/18;
+  let g='';
+  for(const v of [0,5,10,15]){ g+=`<line x1="${L}" y1="${y(v)}" x2="${R}" y2="${y(v)}" stroke="${T_INK}" stroke-width="0.5" opacity="0.16"/>`;
+    g+=tTxt(L-4,y(v)+3,'+'+v,{a:'end',s:7.5}); }
+  g+=`<line x1="${L}" y1="${y(5)}" x2="${R}" y2="${y(5)}" stroke="${T_ACC}" stroke-width="1" stroke-dasharray="5 4" opacity="0.8"/>`;
+  g+=tTxt(R,y(5)-5,'objetivo ΔT ≤ 5 K',{a:'end',c:T_ACC,s:7.5});
+  g+=`<path d="${TERM.vent.map((v,i)=>(i?'L':'M')+x(v[0]).toFixed(1)+' '+y(v[1]).toFixed(1)).join(' ')}" fill="none" stroke="${T_INK}" stroke-width="2"/>`;
+  const a=TERM.vent[2];
+  g+=`<circle cx="${x(a[0])}" cy="${y(a[1])}" r="3.4" fill="${T_ACC}"/>`;
+  g+=tTxt(x(a[0])+8,y(a[1])-5,'hoy 94,8 m² → +10,2 K',{c:T_ACC,s:8});
+  [40,200,400,600].forEach(v=>g+=tTxt(x(v),T_H-12,v,{a:'middle',s:7.5}));
+  g+=tTxt(L,T_H-2,'m² de paño abatible · enero, día medio',{s:8});
+  return tSvg(g);
+}
+(()=>{ const put=(id,html)=>{const e=document.getElementById(id); if(e)e.innerHTML=html;};
+  put('tU',plotU()); put('tG',plotG()); put('tE',plotE()); put('tV',plotV()); })();
+const btnTerm=document.getElementById('btnTerm');
+if(btnTerm) btnTerm.addEventListener('click',()=>{ if(current!==6)return;
+  const abierto=st.termica>0.5;
+  gsap.to(st,{termica:abierto?0:1,duration:1.1,ease:'power2.inOut'});
+  if(!abierto&&montTl){montTl.kill();montTl=null;}          /* corta la secuencia si iba corriendo */
+  if(!abierto)st.montaje=5;                                  /* el modelo queda armado y quieto */
+  btnTerm.textContent=abierto?'CERTIFICACIÓN TÉRMICA →':'← VOLVER AL MONTAJE';
+});
+
 let wheelLock=0;
 addEventListener('wheel',e=>{
   const p=e.target.closest&&e.target.closest('#s8 .panel');
@@ -1276,7 +1406,7 @@ function tick(){
   const dith=document.getElementById('dither');
   if(dith) dith.style.opacity=current===1?(0.16+0.5*st.globe):0;   /* dither fuerte en globo, sutil tras el descenso */
   /* módulo axonométrico (slide 4) y montaje (slide 5): cámara lejana + fov chico = paralela, sin niebla */
-  grid.visible=[1,2,6,9].includes(current);                        /* grilla solo en escenas 3D de terreno */
+  grid.visible=[1,2,6].includes(current);                        /* grilla solo en escenas 3D de terreno */
   if(current===4||current===5||current===6){ scene.fog.near=900; scene.fog.far=1800; } else { scene.fog.near=95; scene.fog.far=270; }
   modExp.visible=current===4;
   if(modExp.visible){ modExp.rotation.y+=0.004;
@@ -1304,21 +1434,31 @@ function tick(){
   } else { const hit=document.getElementById('anaHit'); if(hit){hit.classList.remove('on','grab','grabbing');} }
   /* montaje 4D (slide 5): cada fase entra en ámbar y asienta a crema */
   const montOn=current===6;
+  MONT_LUZ.visible=montOn; MONT_AMB.visible=montOn;   /* luz propia del montaje */
   montG.forEach((m,i)=>{
     const k=THREE.MathUtils.clamp(st.montaje-i,0,1);
     m.g.visible=montOn&&k>0.002;
     if(!m.g.visible)return;
-    setDraw(m.g,Math.max(k,0.12));
     const t=Math.pow(k,3);
-    m.mats.forEach(e=>{e.mt.color.copy(C_ACC).lerp(e.c0,t);});
+    m.mats.forEach(e=>{e.mt.color.copy(C_ACC).lerp(e.c0,t);
+      e.mt.opacity=(e.mt.userData.o0!==undefined?e.mt.userData.o0:1)*Math.min(1,k*2.2);});
     if(i===0){m.g.position.y=m.baseY+(1-k)*1.6; m.g.rotation.y=(1-k)*9;}   /* pilotes se hincan girando */
     if(i===1)m.g.position.x=m.baseX-(1-k)*5.5;                     /* vigas entran deslizando */
     if(i===2)m.g.position.y=m.baseY+(1-k)*1.1;                     /* suelo ventilado baja a su posición */
     if(i===3)m.g.position.y=m.baseY+(1-k)*5.5;                     /* módulo desciende (grúa) */
     if(i===4)m.g.position.z=m.baseZ+(1-k)*3.2;                     /* piel llega de frente */
   });
+  /* acto 2: certificación térmica — el modelo se corre a la izquierda y entran los gráficos */
+  const tw=document.getElementById('termWrap');
+  if(tw){ const q=montOn?st.termica:0;
+    tw.style.opacity=q;
+    tw.style.transform=`translateY(-50%) translateX(${(1-q)*40}px)`;
+    document.querySelectorAll('#termWrap .tCard').forEach((c,i)=>c.classList.toggle('on',q>0.25+i*0.16));
+    montG.forEach(m=>{ const sc=1-q*0.42;                   /* se achica y se corre: deja sitio a la lámina */
+      m.g.scale.setScalar(sc); m.g.position.x=m.baseX-q*10.4; });
+  }
   const mh=document.getElementById('montHud');
-  if(mh){ const onH=montOn&&st.montaje>0.02&&!animating;
+  if(mh){ const onH=montOn&&st.montaje>0.02&&!animating&&st.termica<0.15;
     mh.style.opacity=onH?1:0;
     if(onH){ const idx=Math.min(4,Math.floor(st.montaje));
       if(mh.dataset.ph!==String(idx)){ mh.dataset.ph=String(idx);

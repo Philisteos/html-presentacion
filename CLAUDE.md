@@ -53,6 +53,8 @@ Producir la **1ª entrega digital del 23-ago-2026** (filtro de finalistas): imá
 | PRES-025 | 2026-08-23 | **IFC reales en montaje y anatomía.** `crujia_montaje.ifc` (337 elem) → slide 07 en 5 fases con la animación vigente, wireframe de malla completa (decisión: todas las aristas, 322k); reparto fundación 4 · vigas 8 · suelo ventilado 108 (emparrillado = suelo, decisión) · módulo 30 · piel 187. `ecopilote.ifc` → pieza 01 de la Anatomía (reemplaza placeholder). Textos de fase actualizados (Ecopilote 88,9 × 1600). Horneador reutilizable `04_ASSETS/bake_montaje.py`. Deck 8,2 MB. |
 | PRES-026 | 2026-08-23 | **El deck pasa a Git**: repo `github.com/Philisteos/html-presentacion`, rama `main`, identidad de commits anónima (Philisteos + noreply). El flujo de trabajo sigue ahí; Dropbox queda como espejo para Javier cuando se pida «guardado importante». |
 
+| PRES-027 | 2026-08-23 | **Deck a 13 slides: LA PIEL eliminada, su contenido vive en la 07.** Slide 07 = dos actos: montaje 4D (IFC actualizado, 385 elem, ahora en **sólido sombreado + contorno** como la 06 — el wireframe de malla se veía sucio) → botón CERTIFICACIÓN TÉRMICA: el modelo se achica/corre y entran 4 gráficos SVG con las series reales de NORMATIVA_TERMICA/INFORME_TERMICO.md (U vs límite · galería mes a mes · pérdida muro −37% · verano ΔT vs abatibles). Reparto de fases por centro vertical: 7·11·138·58·171. Horneador: 04_ASSETS/bake_montaje_fases.py. |
+
 *(Agregar aquí cada nueva decisión: paleta, tipografías, orden de slides, herramienta de video, etc.)*
 
 ## 3. Restricciones no negociables (de las bases)
