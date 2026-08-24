@@ -28,7 +28,7 @@ PREFIX  = _opt("--prefix", "PLANTA")                     # nombre de las constan
 OUT_SVG = _opt("--out-svg", "planta_box.svg" if _opt("--prefix", "PLANTA") == "PLANTA" else _opt("--prefix", "PLANTA").lower() + ".svg")
 OUT_JS  = _opt("--out-js", "../02_SLIDES_HTML/lib/planta_box.js")
 UNIT_M  = float(_opt("--unit", 0.01))   # 1 unidad DXF -> m. 0.01 = cm (AutoCAD), 0.001 = mm (Revit)
-LW_SCALE = 2.2          # amplificación de la jerarquía en pantalla
+LW_SCALE = float(_opt("--lwscale", 2.2))   # amplificacion de la jerarquia en pantalla
 
 # Tabla CTB: color ACI -> grosor de ploteo (mm). EDITABLE.
 CTB = {2:0.50, 1:0.18, 4:0.15, 3:0.20, 6:0.13, 7:0.13, 5:0.15, 8:0.10, 30:0.15,
@@ -41,6 +41,7 @@ CTB = {2:0.50, 1:0.18, 4:0.15, 3:0.20, 6:0.13, 7:0.13, 5:0.15, 8:0.10, 30:0.15,
 # Overrides quirúrgicos: el primero que calce manda. EDITABLE.
 #   match por 'layer' (nombre exacto), 'ltype' (subcadena, p.ej. 'HIDDEN') o 'handle' (entidad única)
 OVERRIDES = [
+    {"handle": "249B2", "lw": 0.50},           # perimetro exterior de la ficha MINSAL gine: mismo peso que el modulo
     {"layer": "GD SUPERFICIES", "lw": 0.40},   # linea punteada exterior (perimetro del box) mas gruesa
     {"layer": "S-FSTN-____-OTLN", "lw": 0.22}, # uniones estructurales: detalle fino, no manchas
     # {"ltype": "HIDDEN", "lw": 0.20},         # ej.: todos los segmentados
