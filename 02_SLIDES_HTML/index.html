@@ -77,7 +77,11 @@
   /* láminas de planimetría CAD (slides 06 y 07) — estilos compartidos */
   #plantaWrap,#planoWrap{position:fixed;top:47%;transform:translateY(-50%);right:5%;width:48%;z-index:25;
     opacity:0;pointer-events:none}
-  #plantaSvg svg,#plantaB svg,#planoSvg svg,#corteSvg svg{display:block;width:100%;height:auto}
+  #plantaWrap{height:76%}                                    /* caja fija: cada plano se ajusta dentro */
+  #plantaStage{height:calc(100% - 96px);display:flex;align-items:center;justify-content:center}
+  #plantaSvg{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  #plantaSvg svg,#plantaB svg{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+  #planoSvg svg,#corteSvg svg{display:block;width:100%;height:auto}
   .pcap{margin-top:16px;white-space:nowrap;position:relative}
   .pscale{position:absolute;right:0;top:0;text-align:right}
   .pscale .bar{display:flex;height:5px;border:1px solid rgba(232,230,224,.9);margin-top:5px}
@@ -94,7 +98,8 @@
   .pcap small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim-cobalt);margin-top:3px}
   /* slide 06: transición A⇄B "industrialización del módulo" */
   #plantaStage{position:relative}
-  #plantaB{position:absolute;inset:0;background:var(--cobalt);display:flex;align-items:center;opacity:0}
+  /* (la altura la fija la regla de arriba) */
+  #plantaB{position:absolute;inset:0;background:var(--cobalt);display:flex;align-items:center;justify-content:center;opacity:0}
   #indusTag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);opacity:0;
     font-family:var(--mono);font-size:10px;letter-spacing:.32em;color:var(--white);
     border-bottom:1px solid rgba(232,230,224,.6);padding-bottom:6px}
@@ -409,7 +414,7 @@
     <div class="panel">
       <div class="kicker">08 — NORMATIVA MINSAL</div>
       <h2>La norma entra al módulo</h2>
-      <p>Planta tipo según fichas MINSAL: cada recinto con su equipamiento normativo. Los criterios de salud — superficies, radios de giro, equipamiento por código — se traducen al catálogo industrializado: el mismo programa, resuelto dentro del módulo de 3,5 × 8,0 m.</p>
+      <p>La sala de procedimientos gine-obstétrica según la ficha MINSAL, y sobre ella la misma sala reordenada dentro del ancho transportable de 3,5 m. Mismo equipamiento, mismos radios de giro, misma norma: lo que cambia es la geometría que impone el transporte. Esa es la lógica constructiva del proyecto.</p>
       <div class="crit"><span>HABITABILIDAD</span><span>ESTRATEGIA MMC</span></div>
       <button id="btnIndus">⇄ INDUSTRIALIZACIÓN DEL MÓDULO</button>
     </div>
@@ -563,7 +568,8 @@
 <script src="lib/AsciiEffect.js"></script>
 <script src="lib/gsap.min.js"></script>
 <script src="lib/terreno_real.js"></script>
-<script src="lib/planta_box.js"></script>
+<script src="lib/gine_original.js"></script>
+<script src="lib/gine_modulo.js"></script>
 <script src="lib/earth_map.js"></script>
 <script src="lib/truck_wire.js"></script>
 <script src="lib/truck_solid.js"></script>
@@ -1336,10 +1342,11 @@ function tick(){
     const cap=pw.querySelector('.pcap');
     if(cap){ const B=q>0.5?'b':'a';
       if(cap.dataset.mode!==B){ cap.dataset.mode=B;
-        cap.querySelector('u').textContent=B==='b'?'PLANTA · MÓDULO 3,5 × 8,0':'PLANTA · BOX DE CONSULTA';
-        cap.querySelector('b').textContent=B==='b'?'Programa MINSAL industrializado':'Equipamiento según fichas MINSAL';
-        cap.querySelector('small').textContent=B==='b'?'DXF del módulo en preparación — mismo pipeline de grosores':'Códigos M · E · T — dibujo Revit → AutoCAD, grosores de ploteo conservados';
-        const psc=pw.querySelector('.pscale'); if(psc)psc.style.visibility=B==='b'?'hidden':'visible';  /* barra solo con DXF real */
+        cap.querySelector('u').textContent=B==='b'?'ADAPTACIÓN · MÓDULO 3,5 × 8,0':'FICHA MINSAL · SALA GINE-OBST';
+        cap.querySelector('b').textContent=B==='b'?'7,73 × 3,43 m · programa reordenado':'6,27 × 6,86 m · recinto normativo';
+        cap.querySelector('small').textContent=B==='b'?'Mismo equipamiento y radios de giro, dentro del ancho transportable':'CON_08 con baño · equipamiento y radios de giro normativos';
+        const psc=document.getElementById('gineScale');                 /* la barra sigue midiendo 2 m reales */
+        if(psc)psc.style.width=(2/(B==='b'?GINE_MOD_W_M:GINE_ORIG_W_M)*100)+'%';
       } }
   }
   /* plano general (slide 07): planta + corte desplegable A–A' */
@@ -1360,24 +1367,16 @@ function tick(){
   if(!COBALT_SLIDES.includes(current))renderer.render(scene,camera);
   requestAnimationFrame(tick);
 }
-document.getElementById('plantaSvg').innerHTML=PLANTA_SVG;         /* inyecta la planta CAD horneada */
-(()=>{ /* escala gráfica exacta: 2 m medidos contra el ancho real del plano */
+document.getElementById('plantaSvg').innerHTML=GINE_ORIG_SVG;     /* A · ficha MINSAL */
+document.getElementById('plantaB').innerHTML=GINE_MOD_SVG;        /* B · adaptación al módulo */
+(()=>{ /* escala gráfica exacta: 2 m medidos contra el ancho real de cada plano */
   const c=document.querySelector('#plantaWrap .pcap');
-  const d=document.createElement('div'); d.className='pscale';
+  const d=document.createElement('div'); d.className='pscale'; d.id='gineScale';
   d.innerHTML='<u>ESCALA GRÁFICA</u><div class="bar"><i></i><i></i></div><div class="nums"><span>0</span><span>1</span><span>2 m</span></div>';
-  d.style.width=(2/PLANTA_W_M*100)+'%'; c.appendChild(d);
+  d.style.width=(2/GINE_ORIG_W_M*100)+'%'; c.appendChild(d);
 })();
 /* ===== placeholders DXF pendientes (se reemplazan con bake_planta.py al llegar los archivos) ===== */
-const PLANTA_B_PH=`<svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
- <g stroke="#e8e6e0" fill="none">
-  <rect x="18" y="18" width="764" height="314" stroke-width="3" stroke-dasharray="14 8"/>
-  <line x1="285" y1="18" x2="285" y2="332" stroke-width="1" stroke-dasharray="6 8"/>
-  <line x1="545" y1="18" x2="545" y2="332" stroke-width="1" stroke-dasharray="6 8"/>
-  <rect x="50" y="230" width="180" height="70" stroke-width="1" stroke-dasharray="4 6" opacity="0.6"/>
-  <rect x="600" y="50" width="140" height="90" stroke-width="1" stroke-dasharray="4 6" opacity="0.6"/>
- </g>
- <text x="400" y="182" font-size="24" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="6">MÓDULO 3,5 × 8,0 — DXF EN PREPARACIÓN</text>
-</svg>`;
+/* (el placeholder del módulo quedó obsoleto: ahora es GINE_MOD_SVG real) */
 const PLANO_PH=`<svg viewBox="0 -85 2400 1255" xmlns="http://www.w3.org/2000/svg">
  <g stroke="#e8e6e0" fill="none">
   <rect x="30" y="30" width="2340" height="990" stroke-width="4"/>
@@ -1405,7 +1404,6 @@ const CORTE_PH=`<svg viewBox="0 0 2400 430" xmlns="http://www.w3.org/2000/svg">
  <g stroke="#e8e6e0" opacity="0.5">${Array.from({length:40},(_,i)=>`<line x1="${60*i}" y1="368" x2="${60*i-22}" y2="392"/>`).join('')}</g>
  <text x="1200" y="260" font-size="40" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="8">CORTE A–A' — DXF EN PREPARACIÓN</text>
 </svg>`;
-document.getElementById('plantaB').innerHTML=PLANTA_B_PH;
 document.getElementById('planoSvg').innerHTML=PLANO_PH;
 document.getElementById('corteSvg').innerHTML=CORTE_PH;
 setDraw(hero,0);setDraw(factory,0);setDraw(marker,0);setDraw(truck,0);route.geometry.setDrawRange(0,0);
