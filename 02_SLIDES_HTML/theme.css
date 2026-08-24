@@ -1,0 +1,94 @@
+/* ============================================================
+   PAC 7.0 · DESIGN SYSTEM — tema "Ingeniería sobria" (v1)
+   Equipo PAC7.0-WSEF · Deck de slides horizontales
+   Dos grounds (cobalto / azul-noche) · hilo: blanco + ámbar
+   ============================================================ */
+
+:root{
+  /* --- grounds --- */
+  --cobalt:        #1466e0;   /* hitos: portada, divisores de acto, cierre */
+  --cobalt-deep:   #0e4fb5;   /* sombra / hover sobre cobalto */
+  --navy:          #0a0f14;   /* técnico: datos, wireframe, planimetría */
+  --navy-2:        #0e151c;   /* panel / card sobre navy */
+
+  /* --- tinta --- */
+  --white:         #ffffff;   /* tinta y ASCII sobre cobalto */
+  --wire:          #e9f1fa;   /* líneas wireframe (hielo) */
+
+  /* --- acento (constante en ambos grounds) --- */
+  --accent:        #ff8a2b;   /* ámbar */
+  --accent-deep:   #e06a00;   /* ámbar quemado (sombra/hover) */
+
+  /* --- texto secundario por ground --- */
+  --dim-navy:      #7d8d99;   /* sec. sobre navy */
+  --dim-cobalt:    #d6e6fb;   /* sec. sobre cobalto */
+
+  /* --- bordes / líneas --- */
+  --line-navy:     #22303b;   /* hairline sobre navy */
+  --line-cobalt:   #ffffff33; /* hairline sobre cobalto (blanco 20%) */
+
+  /* --- tipografía --- */
+  --font-display: 'Arial Narrow','Segoe UI',system-ui,sans-serif; /* títulos condensados MAYÚS */
+  --font-body:    'Segoe UI','Inter',system-ui,sans-serif;
+  --font-mono:    'Consolas','Cascadia Mono',monospace;           /* datos, kickers, HUD */
+
+  /* escala tipográfica (deck 1080p) */
+  --fs-hero:  clamp(40px, 6.4vw, 92px);
+  --fs-h2:    clamp(26px, 3.2vw, 44px);
+  --fs-body:  14.5px;
+  --fs-data:  11.5px;
+  --fs-kick:  11px;
+  --lh-tight: 1.02;
+  --lh-body:  1.65;
+  --ls-kick:  .32em;   /* letter-spacing kickers/labels */
+  --ls-data:  .06em;
+
+  /* --- retícula 12 columnas + ritmo --- */
+  --grid-cols: 12;
+  --margin-x:  7vw;    /* margen lateral de slide */
+  --gap:       clamp(14px, 1.4vw, 22px);
+  --pad-panel: 26px 28px;
+
+  /* --- acabados --- */
+  --dot-glow:  0 0 8px var(--accent);
+  --dur:       1.25s;  /* transición entre slides */
+  --ease:      cubic-bezier(.65,.05,.36,1);
+}
+
+/* ===== MODO por ground: aplicar .ground-cobalt o .ground-navy a la slide ===== */
+.ground-navy{
+  --bg: var(--navy);      --bg-panel: var(--navy-2);
+  --ink: var(--wire);     --ink-strong: var(--white);
+  --dim: var(--dim-navy); --line: var(--line-navy);
+  --chip-bg: rgba(255,255,255,.03);
+  background: var(--bg); color: var(--ink);
+}
+.ground-cobalt{
+  --bg: var(--cobalt);    --bg-panel: var(--cobalt-deep);
+  --ink: var(--white);    --ink-strong: var(--white);
+  --dim: var(--dim-cobalt); --line: var(--line-cobalt);
+  --chip-bg: rgba(255,255,255,.10);
+  background: var(--bg); color: var(--ink);
+}
+
+/* ===== primitivos reutilizables ===== */
+.kicker{ font-family:var(--font-mono); font-size:var(--fs-kick);
+  letter-spacing:var(--ls-kick); color:var(--accent); text-transform:uppercase; }
+
+.title{ font-family:var(--font-display); font-stretch:condensed;
+  font-size:var(--fs-h2); line-height:var(--lh-tight); font-weight:700;
+  text-transform:uppercase; letter-spacing:.01em; text-wrap:balance; color:var(--ink-strong); }
+
+.body{ font-family:var(--font-body); font-size:var(--fs-body);
+  line-height:var(--lh-body); color:var(--dim); max-width:46ch; }
+
+.chip{ font-family:var(--font-mono); font-size:var(--fs-data);
+  letter-spacing:var(--ls-data); color:var(--ink-strong);
+  border-left:2px solid var(--accent); padding:6px 10px; background:var(--chip-bg); }
+
+.tag{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.14em;
+  color:var(--ink-strong); border:1px solid var(--line); padding:4px 9px; }
+
+/* punto/leader del dato flotante */
+.data-dot::before{ content:''; display:inline-block; width:6px; height:6px;
+  border-radius:50%; background:var(--accent); box-shadow:var(--dot-glow); }

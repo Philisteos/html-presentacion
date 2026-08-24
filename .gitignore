@@ -1,0 +1,7 @@
+# temporales y logs
+*.log
+*.bak
+Revit_temp/
+_backup*/
+Thumbs.db
+desktop.ini

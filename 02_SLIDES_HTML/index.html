@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAC7.0-WSEF · Posta Rural Industrializada</title>
+<style>
+  /* ===== TOKENS (design system · theme.css inlined) ===== */
+  :root{
+    --cobalt:#1466e0; --cobalt-deep:#0e4fb5;
+    --navy:#0a0f14; --navy-2:#0e151c;
+    --white:#ffffff; --wire:#e8e6e0; --cream:#e8e6e0;
+    --accent:#ff8a2b; --accent-deep:#e06a00;
+    --dim-navy:#7d8d99; --dim-cobalt:#d6e6fb;
+    --line-navy:#22303b; --line-cobalt:#ffffff33;
+    --font-display:'Arial Narrow','Segoe UI Semibold','Segoe UI',system-ui,sans-serif;
+    --font-body:'Segoe UI','Inter',system-ui,sans-serif;
+    --mono:'Consolas','Cascadia Mono',monospace;
+    --dur:1.2s;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--cobalt);color:var(--white);font-family:var(--font-body)}
+
+  #scene{position:fixed;inset:0;z-index:0;width:100%;height:100%;display:block}
+  #vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 60%,rgba(6,40,96,.45) 100%);transition:opacity .5s}
+  /* trama dither (ref. designrigs dither-generator) — activa en la secuencia de la slide 2 */
+  #dither{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;mix-blend-mode:soft-light;image-rendering:pixelated;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='none'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='2' y='0' width='1' height='1' fill='%23061236'/%3E%3Crect x='0' y='2' width='1' height='1' fill='%23061236'/%3E%3C/svg%3E");
+    background-size:5px 5px}
+  /* Tierra 2D ditherizada (estilo dither-generator) */
+  #globe2d{position:fixed;left:50%;top:47%;z-index:2;width:46%;aspect-ratio:1;
+    transform:translate(-50%,-50%);opacity:0;pointer-events:none}
+  #globe2d canvas{width:100%;height:100%;image-rendering:pixelated;display:block}
+  #globeMark{position:absolute;left:56.5%;top:82%;width:9px;height:9px;margin:-4.5px;background:var(--accent);border-radius:50%}
+  #globeMark::after{content:'';position:absolute;inset:-8px;border:1px solid var(--accent);border-radius:50%;animation:gm 1.7s ease-out infinite}
+  @keyframes gm{0%{transform:scale(.45);opacity:1}100%{transform:scale(1.5);opacity:0}}
+  /* capa de zoom: escala anclada al marcador de Chile durante el descenso */
+  #eZoom{position:absolute;inset:0;transform-origin:52% 70%;will-change:transform}
+
+  /* ===== HUD ===== */
+  #hud{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;justify-content:space-between;align-items:flex-start;padding:26px 34px;pointer-events:none;transition:color .6s}
+  #hud .code{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:inherit;border:1px solid currentColor;padding:7px 12px;opacity:.85}
+  #hud .counter{text-align:right;font-family:var(--mono);color:inherit}
+  #hud .counter .big{font-size:26px;letter-spacing:.1em}
+  #hud .counter .big em{font-style:normal;color:var(--accent)}
+  #hud .counter small{display:block;font-size:10px;letter-spacing:.28em;margin-top:4px;opacity:.6}
+
+  #ghost{position:fixed;right:4%;bottom:6%;z-index:2;font-family:var(--mono);
+    font-size:clamp(90px,calc(var(--sw,100vw)*0.22),320px);line-height:1;color:transparent;
+    -webkit-text-stroke:1px rgba(255,255,255,.14);pointer-events:none;user-select:none;transition:opacity .5s}
+
+  /* ===== track + slides ===== */
+  #track{position:fixed;inset:0;z-index:10;display:flex;height:100%;will-change:transform}
+  .slide{position:relative;min-width:100%;height:100%;padding:0 7%;display:flex;align-items:center;pointer-events:none}
+  .slide .panel{max-width:min(52%,540px);pointer-events:auto}
+  .slide.right{justify-content:flex-end}
+  .slide.center{justify-content:center;text-align:center}
+
+  /* grounds */
+  .ground-cobalt{background:var(--cobalt);color:var(--white)}
+  .ground-cobalt .kicker{color:var(--white);opacity:.85}
+  .ground-cobalt .panel p{color:var(--dim-cobalt)}
+  .ground-cobalt .crit span{color:var(--white);border-color:var(--line-cobalt)}
+
+  /* primitivos */
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--accent);text-transform:uppercase;margin-bottom:16px}
+  .panel h2{font-family:var(--font-display);font-stretch:condensed;font-size:clamp(26px,calc(var(--sw,100vw)*0.034),46px);line-height:1.02;letter-spacing:.005em;text-transform:uppercase;margin-bottom:16px;text-wrap:balance;font-weight:700}
+  .panel p{font-size:14.5px;line-height:1.65;color:var(--dim-cobalt);max-width:44ch}
+  #btnExplode,#btnMont{margin-top:20px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--white);
+    background:rgba(255,255,255,.06);border:1px solid var(--line-cobalt);padding:11px 16px;cursor:pointer;transition:.18s}
+  #btnExplode:hover,#btnMont:hover{border-color:var(--accent);color:var(--accent)}
+  /* HUD de fase del montaje 4D (estilo SynchroPro + cota) */
+  #montHud{position:fixed;left:34px;bottom:78px;z-index:40;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .25s}
+  #montHud .msegs{display:flex;gap:5px;margin-top:9px}
+  #montHud .msegs i{width:26px;height:2px;background:rgba(232,230,224,.25);transition:background .2s}
+  /* láminas de planimetría CAD (slides 06 y 07) — estilos compartidos */
+  #plantaWrap,#planoWrap{position:fixed;top:47%;transform:translateY(-50%);right:5%;width:48%;z-index:25;
+    opacity:0;pointer-events:none}
+  #plantaSvg svg,#plantaB svg,#planoSvg svg,#corteSvg svg{display:block;width:100%;height:auto}
+  .pcap{margin-top:16px;white-space:nowrap;position:relative}
+  .pscale{position:absolute;right:0;top:0;text-align:right}
+  .pscale .bar{display:flex;height:5px;border:1px solid rgba(232,230,224,.9);margin-top:5px}
+  .pscale .bar i{flex:1}
+  .pscale .bar i:first-child{background:rgba(232,230,224,.9)}
+  .pscale .nums{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--dim-cobalt);margin-top:3px}
+  .pscale .nums span{text-decoration:none}
+  .pcap u{display:block;text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:var(--dim-cobalt)}
+  .pcap .pln{display:block;position:relative;height:1px;background:rgba(232,230,224,.8);margin:5px 0 6px}
+  .pcap .pln::before,.pcap .pln::after{content:'';position:absolute;top:-4px;width:9px;height:1px;background:var(--wire);transform:rotate(-45deg)}
+  .pcap .pln::before{left:-3px}
+  .pcap .pln::after{right:-3px}
+  .pcap b{display:block;font-family:var(--mono);font-weight:600;font-size:12.5px;letter-spacing:.04em;color:var(--white)}
+  .pcap small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim-cobalt);margin-top:3px}
+  /* slide 06: transición A⇄B "industrialización del módulo" */
+  #plantaStage{position:relative}
+  #plantaB{position:absolute;inset:0;background:var(--cobalt);display:flex;align-items:center;opacity:0}
+  #indusTag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);opacity:0;
+    font-family:var(--mono);font-size:10px;letter-spacing:.32em;color:var(--white);
+    border-bottom:1px solid rgba(232,230,224,.6);padding-bottom:6px}
+  /* slide 07: corte desplegable */
+  #corteBox{margin-top:18px;opacity:0}
+  /* slide 09: escantillón (lámina vertical en la zona derecha) */
+  #sDET{position:relative}
+  .escZone{position:absolute;right:7%;top:50%;transform:translateY(-50%);width:21%}
+  .escZone svg{display:block;width:100%;height:auto}
+  /* slides 10-11: imágenes (marco placeholder a la espera de los renders) */
+  #sIMG1,#sIMG2{display:flex;align-items:center;justify-content:center}
+  .imgWrap{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+  .imgFrame{position:relative;width:68%;aspect-ratio:16/9;border:1px solid rgba(232,230,224,.3);
+    display:flex;align-items:center;justify-content:center}
+  .imgFrame .ck{position:absolute;width:15px;height:15px;border:0 solid var(--wire)}
+  .imgFrame .ck.tl{top:-1px;left:-1px;border-top-width:2px;border-left-width:2px}
+  .imgFrame .ck.tr{top:-1px;right:-1px;border-top-width:2px;border-right-width:2px}
+  .imgFrame .ck.bl{bottom:-1px;left:-1px;border-bottom-width:2px;border-left-width:2px}
+  .imgFrame .ck.br{bottom:-1px;right:-1px;border-bottom-width:2px;border-right-width:2px}
+  .imgPh{text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.3em;color:var(--dim-cobalt)}
+  .imgPh small{display:block;margin-top:12px;font-size:9px;letter-spacing:.24em;opacity:.75}
+  /* slide 04: sistemas MMC — condicion del encargo -> sistema que responde */
+  #sMMC{position:relative}
+  #sMMC .panel{max-width:min(32%,400px)}
+  .mmcZone{position:absolute;right:6%;top:50%;transform:translateY(-50%);width:min(50%,860px)}
+  .mmcHead{display:grid;grid-template-columns:34px 1fr 1.3fr;gap:0 20px;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.28em;color:var(--dim-cobalt);padding-bottom:10px}
+  .mmcHead span:first-child{grid-column:2}
+  .mmcRow{display:grid;grid-template-columns:34px 1fr 1.3fr;gap:0 20px;align-items:center;
+    border-top:1px solid rgba(232,230,224,.22);padding:17px 0}
+  .mmcRow:last-of-type{border-bottom:1px solid rgba(232,230,224,.22)}
+  .mmcRow em{font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--dim-cobalt)}
+  .mmcRow b{display:block;font-family:var(--mono);font-weight:600;font-size:12.5px;letter-spacing:.03em;color:var(--white)}
+  .mmcRow small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;color:var(--dim-cobalt);margin-top:4px}
+  .mmcRow .sy{position:relative;padding-left:28px}
+  .mmcRow .sy::before{content:'';position:absolute;left:0;top:50%;width:16px;height:1px;background:rgba(232,230,224,.55)}
+  .mmcRow .sy::after{content:'';position:absolute;left:12px;top:calc(50% - 3px);width:6px;height:6px;
+    border-top:1px solid rgba(232,230,224,.55);border-right:1px solid rgba(232,230,224,.55);transform:rotate(45deg)}
+  .mmcRow.lead em{color:var(--accent)}
+  .mmcRow.lead .sy b{font-size:14px}
+  .mmcRow:not(.lead) .ex b,.mmcRow:not(.lead) .sy b{color:var(--dim-cobalt)}
+  .mmcFoot{margin-top:15px;display:flex;gap:26px;font-family:var(--mono);font-size:8.5px;letter-spacing:.24em;color:var(--dim-cobalt)}
+  .mmcFoot i{font-style:normal}
+  .mmcFoot i::before{content:'';display:inline-block;width:15px;height:2px;margin-right:8px;vertical-align:middle;background:var(--accent)}
+  .mmcFoot i.c::before{background:rgba(232,230,224,.4)}
+  /* slide 06: anatomia de las partes (3 IFC sombreados, zoom al tocar) */
+  #sANA{pointer-events:none}
+  .anaPanel{max-width:min(26%,330px);position:absolute;left:7%;top:9%}
+  .anaPanel p{font-size:13px;color:var(--dim-cobalt)}
+  #anaHit{position:fixed;inset:0;z-index:20;display:none;cursor:pointer}
+  #anaHit.on{display:block}
+  #anaHit.grab{cursor:grab}
+  #anaHit.grabbing{cursor:grabbing}
+  .callout.ana{transform:translate(-50%,-100%)}
+  .crit{margin-top:20px;display:flex;flex-wrap:wrap;gap:7px}
+  .crit span{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--white);border:1px solid var(--line-cobalt);padding:4px 9px}
+
+  /* portada (cobalto, ASCII full-bleed) */
+  #s0{position:relative;justify-content:flex-start;align-items:flex-end}
+  #s0 .panel{position:absolute;left:7%;bottom:8%;max-width:60%;z-index:12;pointer-events:none;text-shadow:0 2px 16px rgba(6,26,80,.55)}
+  #s0 .sub{font-family:var(--mono);font-size:12px;letter-spacing:.36em;margin-bottom:20px;opacity:.9}
+  #s0 h1{font-family:var(--font-display);font-stretch:condensed;font-size:clamp(34px,calc(var(--sw,100vw)*0.062),88px);line-height:.98;letter-spacing:.01em;text-transform:uppercase;max-width:14ch;font-weight:700}
+  #s0 .loc{margin-top:22px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;color:var(--dim-cobalt)}
+  #s1 .panel{max-width:min(40%,430px)}
+  #s2 .panel{max-width:min(42%,450px)}
+
+  /* visor ASCII full-bleed (portada) */
+  #asciiZone{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column}
+  #introViewer{position:absolute;inset:0;cursor:grab;touch-action:none;overflow:hidden;background:transparent;pointer-events:auto;display:flex;align-items:center;justify-content:center}
+  #introViewer.grabbing{cursor:grabbing}
+  #introViewer .ascii{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    line-height:1;color:var(--white);font-family:var(--mono);white-space:pre;user-select:none}
+  #introViewer .ascii *{font-family:var(--mono)!important}
+  #vLabel{position:absolute;top:12px;left:14px;z-index:3;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim-cobalt);pointer-events:none}
+  #dragHint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:3;font-family:var(--mono);font-size:10px;letter-spacing:.28em;color:var(--dim-cobalt);pointer-events:none;transition:opacity .5s}
+  #introData{position:absolute;inset:0;z-index:4;pointer-events:none}
+  #introData .lbl{position:absolute;opacity:0;transition:opacity .25s;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--white);background:rgba(9,30,88,.55);backdrop-filter:blur(2px);padding:7px 10px;transform:translate(12px,-50%);white-space:nowrap;box-shadow:0 0 0 1px rgba(232,230,224,.16)}
+  #introData .lbl::before{content:'';position:absolute;left:-8px;top:50%;width:5px;height:5px;margin-top:-3px;background:var(--accent);border-radius:50%}
+  #introData.on .lbl{opacity:1}
+  #introData .lbl small{display:block;color:var(--dim-cobalt);font-size:9px;letter-spacing:.1em}
+  /* panel de edición ASCII (portada) */
+  #asciiCtl{display:none;position:absolute;right:3.5%;bottom:calc(7% + 52px);z-index:12;pointer-events:auto;width:214px;
+    flex-direction:column;gap:11px;background:rgba(10,42,120,.55);backdrop-filter:blur(3px);
+    border:1px solid var(--line-cobalt);padding:15px 16px}
+  #asciiCtl.open{display:flex}
+  #editBtn{position:absolute;right:3.5%;bottom:7%;z-index:13;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:var(--white);background:rgba(6,18,54,.5);border:1px solid var(--line-cobalt);cursor:pointer;
+    opacity:.35;transition:opacity .2s;pointer-events:auto}
+  #editBtn:hover{opacity:1}
+  #asciiCtl.open~#editBtn, #asciiCtl.open+#editBtn{opacity:1}
+  #asciiCtl .hd{font-family:var(--mono);font-size:9.5px;letter-spacing:.26em;color:var(--dim-cobalt)}
+  #asciiCtl button{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--white);
+    background:rgba(255,255,255,.06);border:1px solid var(--line-cobalt);padding:9px 11px;cursor:pointer;transition:.18s}
+  #asciiCtl button:hover,#asciiCtl button.on{border-color:var(--accent);color:var(--accent)}
+  #asciiCtl button:focus-visible,#asciiCtl input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #asciiCtl .cs{display:flex;gap:0;border:1px solid var(--line-cobalt)}
+  #asciiCtl .cs button{flex:1;border:0;border-right:1px solid var(--line-cobalt);background:transparent;padding:8px 4px;font-size:11px}
+  #asciiCtl .cs button:last-child{border-right:0}
+  #asciiCtl .fld{display:flex;align-items:center;gap:8px}
+  #asciiCtl .fld label{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim-cobalt);width:34px}
+  #asciiCtl .fld .val{font-family:var(--mono);font-size:10px;color:var(--white);width:30px;text-align:right;font-variant-numeric:tabular-nums}
+  #asciiCtl input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:2px;background:var(--line-cobalt);outline:none;cursor:pointer}
+  #asciiCtl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);cursor:pointer}
+  #asciiCtl .chk{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--white);cursor:pointer;user-select:none}
+  #asciiCtl .chk input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+  #asciiCtl .rst{text-align:center;letter-spacing:.2em}
+  #asciiCtl #btnData{text-align:left}
+
+  /* láminas placeholder (integradas al ground cobalto) */
+  .lamina{border:1px solid var(--line-cobalt);background:rgba(9,30,88,.42);backdrop-filter:blur(2px)}
+  .lamina .ph{height:104px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;color:var(--dim-cobalt);
+    background:repeating-linear-gradient(45deg,transparent 0 10px,rgba(232,230,224,.08) 10px 11px)}
+  .lamina .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line-cobalt)}
+  .lamina .meta b{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;color:var(--white)}
+  .lamina .meta em{font-family:var(--mono);font-style:normal;font-size:9px;letter-spacing:.1em;color:var(--dim-cobalt);background:transparent;border:1px solid rgba(232,230,224,.35);padding:2px 7px;white-space:nowrap}
+  .lamina .meta em.s3{border-color:var(--accent);color:var(--white)}
+  .panel .lamina{margin-top:18px;max-width:340px}
+
+  /* entregables */
+  #s8 .panel{max-width:min(1160px,86vw);max-height:82vh;overflow-y:auto;padding-right:10px}
+  #s8 .panel::-webkit-scrollbar{width:4px}
+  #s8 .panel::-webkit-scrollbar-thumb{background:var(--line-navy)}
+  #s8 h2{margin-bottom:6px}
+  #s8 .note{margin-bottom:24px;max-width:none}
+  .ent-grupo{margin-bottom:28px}
+  .ent-grupo h3{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--accent);border-bottom:1px solid var(--line-cobalt);padding-bottom:8px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px}
+  .grid .lamina{margin-top:0}
+  .fine{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--dim-cobalt)}
+
+  /* cierre (cobalto) */
+  #s9 h2{font-family:var(--mono);font-size:clamp(34px,calc(var(--sw,100vw)*0.07),100px);letter-spacing:.08em}
+  #s9 .sub{font-family:var(--mono);font-size:12px;letter-spacing:.34em;color:var(--dim-cobalt);margin-bottom:16px}
+  #s9 p{margin:16px auto 0;font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--dim-cobalt)}
+
+  /* ===== rótulos COTA TÉCNICA (adopción OCI: sin cajas, tipografía al aire) ===== */
+  .callout{position:fixed;z-index:30;pointer-events:none;opacity:0;
+    transform:translate(15px,-50%);white-space:nowrap;max-width:300px}
+  #globeTag{position:fixed;left:7%;top:37%;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+  .callout u,#globeTag u,#montHud u{display:block;text-decoration:none;font-family:var(--mono);
+    font-size:9px;letter-spacing:.3em;color:var(--dim-cobalt)}
+  .callout .ln,#globeTag .ln,#montHud .ln{display:block;position:relative;height:1px;background:rgba(232,230,224,.8);margin:5px 0 6px}
+  .callout .ln::before,.callout .ln::after,#globeTag .ln::before,#globeTag .ln::after,#montHud .ln::before,#montHud .ln::after{
+    content:'';position:absolute;top:-4px;width:9px;height:1px;background:var(--wire);transform:rotate(-45deg)}
+  .callout .ln::before,#globeTag .ln::before,#montHud .ln::before{left:-3px}
+  .callout .ln::after,#globeTag .ln::after,#montHud .ln::after{right:-3px}
+  .callout b,#globeTag b,#montHud b{display:block;font-family:var(--mono);font-weight:600;
+    font-size:12.5px;letter-spacing:.04em;color:var(--white)}
+  .callout small,#globeTag small,#montHud small{display:block;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:.08em;color:var(--dim-cobalt);margin-top:3px}
+
+  /* nav */
+  #nav{position:fixed;bottom:30px;right:34px;z-index:40;display:flex;gap:10px}
+  #nav button{width:46px;height:46px;border:1px solid rgba(232,230,224,.35);background:rgba(9,30,88,.5);
+    color:var(--white);font-size:17px;cursor:pointer;transition:.2s;font-family:var(--mono);opacity:.8}
+  #nav button:hover{color:var(--accent);opacity:1}
+  #nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #dots{position:fixed;bottom:34px;left:34px;z-index:40;display:flex;gap:8px;align-items:center}
+  #dots i{width:20px;height:2px;background:rgba(232,230,224,.35);cursor:pointer;transition:.25s}
+  #dots i.on{background:var(--accent)}
+  #hint{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);z-index:40;font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--dim-navy);pointer-events:none;transition:opacity .5s}
+  /* BLOQUEO HORIZONTAL: en pantallas verticales se rota el deck entero (PRES-023: la
+     composicion es 16:9 y no se adapta; el movil solo la muestra girada). */
+  #rotHint{display:none;position:fixed;z-index:60;left:50%;bottom:14px;transform:translateX(-50%);
+    align-items:center;gap:9px;font-family:var(--mono);font-size:9px;letter-spacing:.24em;
+    color:var(--dim-cobalt);pointer-events:none;opacity:.75;white-space:nowrap}
+  @media (orientation:portrait){
+    body{width:100vh;height:100vw;transform-origin:0 0;transform:rotate(90deg) translateY(-100%)}
+    #rotHint{display:flex}
+  }
+  #rotHint b{font-weight:400;color:var(--white)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:820px) and (orientation:landscape){.callout{display:none}.slide{padding:0 6vw}#ghost{display:none}
+    #s0{flex-direction:column;justify-content:center;text-align:left}#s0 .panel,#asciiZone{max-width:100%;width:100%}#asciiZone{height:38vh;margin-top:20px}}
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div id="vignette"></div>
+<div id="dither"></div>
+<!-- Tierra 2D ditherizada (slide 2, fase globo) -->
+<div id="globe2d">
+  <div id="eZoom"><canvas id="earthCv"></canvas>
+  <div id="globeMark"></div></div>
+</div>
+<div id="ghost">01</div>
+
+<div id="hud">
+  <div class="code">PAC7.0-WSEF</div>
+  <div class="counter"><span class="big"><em id="cur">01</em> / 14</span><small id="chname">PORTADA</small></div>
+</div>
+
+<div id="track">
+
+  <!-- 01 PORTADA · cobalto + ASCII contenido -->
+  <section class="slide ground-cobalt" id="s0" data-name="PORTADA" data-ground="cobalt">
+    <div class="panel">
+      <div class="sub">CONCURSO PAC 7.0 · MÉTODOS MODERNOS DE CONSTRUCCIÓN</div>
+      <h1>Posta rural industrializada</h1>
+      <div class="loc">CENTINELA DE LA GUACHA · FRUTILLAR · REGIÓN DE LOS LAGOS</div>
+    </div>
+    <div id="asciiZone">
+      <div id="introViewer">
+        <div id="vLabel">MODELO · POSTA 3D</div>
+        <div id="dragHint">ARRASTRA PARA ROTAR</div>
+        <div id="introData">
+          <div class="lbl" data-id="m2"><b>≈ 200 M²</b><small>3 RECINTOS · MINSAL</small></div>
+          <div class="lbl" data-id="mods"><b>6 MÓDULOS PROMET</b><small>ACERO + METALCON</small></div>
+          <div class="lbl" data-id="term"><b>ZONA G · U ≤ 0,40</b><small>ENVOLVENTE STOPANEL</small></div>
+          <div class="lbl" data-id="mont"><b>MONTAJE ≈ 2 H/MÓD</b><small>OFF-SITE → ON-SITE</small></div>
+        </div>
+      </div>
+      <div id="asciiCtl">
+        <div class="hd">EDITAR MODELO</div>
+        <button id="btnData" aria-pressed="false">▚ EXPRESAR EN DATOS</button>
+        <div class="cs">
+          <button data-cs=" .:-=+*#%@" class="on">.:-=+*#%@</button>
+          <button data-cs=" .-+*#">.-+*#</button>
+          <button data-cs=" ░▒▓█">░▒▓█</button>
+        </div>
+        <div class="fld"><label>RES</label><input id="rRes" type="range" min="0.10" max="0.60" step="0.01" value="0.45"><span class="val" id="vRes">0.45</span></div>
+        <div class="fld"><label>ESCALA</label><input id="rScale" type="range" min="18" max="60" step="1" value="46"><span class="val" id="vScale">46</span></div>
+        <div class="fld"><label>GIRO</label><input id="rSpin" type="range" min="0" max="60" step="1" value="22"><span class="val" id="vSpin">0.2</span></div>
+        <label class="chk"><input id="cInv" type="checkbox"> INVERTIR COLORES</label>
+        <button id="btnReset" class="rst">↺ RESET</button>
+      </div>
+      <button id="editBtn" title="Editar modelo (tecla E)" aria-label="Editar modelo">⚙</button>
+    </div>
+  </section>
+
+  <!-- 02 EL PROBLEMA · narrativa (0-1 dato) -->
+  <section class="slide" id="s1" data-name="EL PROBLEMA" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">02 — EL PROBLEMA</div>
+      <h2>Salud lejos de todo</h2>
+      <p>En el sur rural de Chile, la atención primaria depende de caminos difíciles y construcciones lentas. Centinela de la Guacha necesita una posta que llegue rápido, funcione desde el día uno y resista el clima frío-lluvioso de la Zona Térmica G.</p>
+      <div class="crit"><span>APORTE AL ENTORNO</span></div>
+    </div>
+  </section>
+
+  <!-- 03 NACE EL MÓDULO -->
+  <section class="slide right" id="s2" data-name="NACE EL MÓDULO" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">03 — LA RESPUESTA</div>
+      <h2>Nace en fábrica, no en el barro</h2>
+      <p>La posta se construye off-site: módulos volumétricos de acero y Metalcon fabricados en planta bajo control industrial, con instalaciones clínicas integradas antes de salir a ruta.</p>
+      <div class="crit"><span>ESTRATEGIA MMC</span><span>INNOVACIÓN TÉCNICA</span></div>
+    </div>
+  </section>
+
+  <!-- 04 SISTEMAS MMC · condicion -> sistema -->
+  <section class="slide" id="sMMC" data-name="SISTEMAS MMC" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">04 — SISTEMAS MMC</div>
+      <h2>Cuatro exigencias, cuatro sistemas</h2>
+      <p>La estrategia es industrialización mixta: módulos volumétricos transportables terminados con fachada prefabricada. Cada sistema entra porque una condición del encargo lo exige — no por catálogo.</p>
+      <div class="crit"><span>ESTRATEGIA MMC</span><span>INNOVACIÓN TÉCNICA</span></div>
+    </div>
+    <div class="mmcZone">
+      <div class="mmcHead"><span>CONDICIÓN DEL ENCARGO</span><span>SISTEMA QUE RESPONDE</span></div>
+      <div class="mmcRow lead"><em>01</em>
+        <div class="ex"><b>Terreno de difícil acceso</b><small>Últimos 6 km rurales estacionales</small></div>
+        <div class="sy"><b>Módulo volumétrico transportable</b><small>Acero + Metalcon · llega terminado · montaje ≈ 2 h</small></div></div>
+      <div class="mmcRow lead"><em>02</em>
+        <div class="ex"><b>Clima Zona G, sin faena húmeda</b><small>Lluvia y frío condicionan la obra</small></div>
+        <div class="sy"><b>Fachada prefabricada StoPanel</b><small>Panel terminado en fábrica · Sto · unifica los módulos</small></div></div>
+      <div class="mmcRow"><em>03</em>
+        <div class="ex"><b>Envolvente térmica de origen cercano</b><small>Planta a ~100 km del terreno</small></div>
+        <div class="sy"><b>Panel SIP</b><small>Cubierta y envolvente liviana · Ingepanel</small></div></div>
+      <div class="mmcRow"><em>04</em>
+        <div class="ex"><b>Recintos clínicos flexibles</b><small>Fichas MINSAL en ~200 m²</small></div>
+        <div class="sy"><b>Construcción en seco</b><small>Tabiquería interior · Knauf</small></div></div>
+      <div class="mmcFoot"><i>ESTRATEGIA</i><i class="c">COMPLEMENTO</i></div>
+    </div>
+  </section>
+
+  <!-- 05 EL MÓDULO -->
+  <section class="slide right" id="s3" data-name="EL MÓDULO" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">05 — EL MÓDULO</div>
+      <h2>Anatomía del módulo</h2>
+      <p>La unidad de 3,5 × 8,0 × 3,2 m concentra toda la industrialización: piso, estructura, instalaciones, tabiques y envolvente térmica salen integrados de fábrica. Teoría preliminar — se detallará con el modelo definitivo.</p>
+      <div class="crit"><span>ESTRATEGIA MMC</span><span>INNOVACIÓN TÉCNICA</span></div>
+      <button id="btnExplode">▲ EXPLOTAR MÓDULO</button>
+    </div>
+  </section>
+
+  <!-- 06 ANATOMÍA DE LAS PARTES · 3 IFC a escala real -->
+  <section class="slide" id="sANA" data-name="ANATOMÍA DE LAS PARTES" data-ground="navy">
+    <div class="panel anaPanel">
+      <div class="kicker">06 — ANATOMÍA DE LAS PARTES</div>
+      <h2>Modelado al perno</h2>
+      <p>Tres piezas industrializadas, a escala real. Toca una para inspeccionarla.</p>
+    </div>
+  </section>
+
+  <!-- 07 EL MONTAJE · técnica (racimo) -->
+  <section class="slide right" id="s4" data-name="EL MONTAJE" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">07 — EL MONTAJE</div>
+      <h2>De la base a la cubierta</h2>
+      <p>Secuencia 4D del sistema: tornillos de fundación sin hormigón, vigas aligeradas perforadas, suelo ventilado con resistencia al fuego normativa, módulo volumétrico terminado y fachada inclinada que se proyecta en cubierta. Cada capa se reemplazará por su modelo IFC real.</p>
+      <div class="crit"><span>ESTRATEGIA MMC</span><span>ESCALABILIDAD</span></div>
+      <button id="btnMont">↻ REPETIR SECUENCIA</button>
+    </div>
+  </section>
+
+  <!-- 06 VIDA INTERIOR · narrativa -->
+  <section class="slide" id="s5" data-name="VIDA INTERIOR" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">08 — NORMATIVA MINSAL</div>
+      <h2>La norma entra al módulo</h2>
+      <p>Planta tipo según fichas MINSAL: cada recinto con su equipamiento normativo. Los criterios de salud — superficies, radios de giro, equipamiento por código — se traducen al catálogo industrializado: el mismo programa, resuelto dentro del módulo de 3,5 × 8,0 m.</p>
+      <div class="crit"><span>HABITABILIDAD</span><span>ESTRATEGIA MMC</span></div>
+      <button id="btnIndus">⇄ INDUSTRIALIZACIÓN DEL MÓDULO</button>
+    </div>
+  </section>
+
+  <!-- 07 PLANO GENERAL · planta + corte desplegable -->
+  <section class="slide" id="sPG" data-name="PLANO GENERAL" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">09 — EL PLANO GENERAL</div>
+      <h2>La posta completa, módulo a módulo</h2>
+      <p>Planta general (~200 m²) armada por agregación de módulos según el programa MINSAL. Sobre la línea de sección A–A' se despliega el corte correspondiente, sin salir de la lámina. El plano definitivo llegará en DXF con sus grosores reales.</p>
+      <div class="crit"><span>HABITABILIDAD</span><span>APORTE AL ENTORNO</span></div>
+      <button id="btnCorte">▼ DESPLEGAR CORTE A–A'</button>
+    </div>
+  </section>
+
+  <!-- 07 LA PIEL · técnica (racimo) -->
+  <section class="slide right" id="s6" data-name="LA PIEL" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">10 — LA PIEL TÉRMICA</div>
+      <h2>Radiografía de la envolvente</h2>
+      <p>Estructura Metalcon + panel SIP + fachada prefabricada StoPanel con terminación continua: la piel unifica los módulos, elimina puentes térmicos en las juntas y supera la nueva exigencia del Art. 4.1.10 OGUC para Zona G.</p>
+      <div class="crit"><span>DISEÑO PASIVO</span><span>INNOVACIÓN TÉCNICA</span></div>
+      <div class="lamina"><div class="ph">CORTE CONSTRUCTIVO / DETALLE JUNTA</div>
+        <div class="meta"><b>Detalles constructivos</b><em class="s3">EN DESARROLLO · S3–S4</em></div></div>
+    </div>
+  </section>
+
+  <!-- 09 DETALLES CONSTRUCTIVOS · escantillón -->
+  <section class="slide" id="sDET" data-name="DETALLES CONSTRUCTIVOS" data-ground="navy">
+    <div class="panel">
+      <div class="kicker">11 — DETALLES CONSTRUCTIVOS</div>
+      <h2>El sistema, al milímetro</h2>
+      <p>Escantillón de la envolvente completa: de los tornillos de fundación al remate de cubierta, con cada capa y material del catálogo industrializado. La lámina llegará en DXF con sus grosores reales, por el mismo pipeline de las plantas.</p>
+      <div class="crit"><span>INNOVACIÓN TÉCNICA</span><span>DISEÑO PASIVO</span></div>
+    </div>
+    <div class="escZone">
+      <svg viewBox="0 0 600 1400" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#e8e6e0" fill="none">
+          <line x1="0" y1="1330" x2="600" y2="1330" stroke-width="4"/>
+          <line x1="290" y1="1330" x2="290" y2="1190" stroke-width="2"/><line x1="310" y1="1330" x2="310" y2="1190" stroke-width="2"/>
+          <circle cx="300" cy="1300" r="26" stroke-width="1" stroke-dasharray="5 5"/>
+          <rect x="230" y="1130" width="140" height="60" stroke-width="2" stroke-dasharray="10 6"/>
+          <rect x="180" y="1090" width="240" height="40" stroke-width="2"/>
+          <line x1="200" y1="1110" x2="400" y2="1110" stroke-width="1" stroke-dasharray="4 6"/>
+          <line x1="255" y1="1090" x2="255" y2="300" stroke-width="2" stroke-dasharray="12 7"/>
+          <line x1="285" y1="1090" x2="285" y2="290" stroke-width="1" stroke-dasharray="6 8"/>
+          <line x1="315" y1="1090" x2="315" y2="282" stroke-width="1" stroke-dasharray="6 8"/>
+          <line x1="345" y1="1090" x2="345" y2="275" stroke-width="2" stroke-dasharray="12 7"/>
+          <polyline points="180,300 420,255 470,246" stroke-width="2" stroke-dasharray="14 8"/>
+          <line x1="180" y1="330" x2="470" y2="276" stroke-width="1" stroke-dasharray="6 8"/>
+        </g>
+        <g stroke="#e8e6e0" opacity="0.5"><line x1="40" y1="1330" x2="18" y2="1354"/><line x1="120" y1="1330" x2="98" y2="1354"/><line x1="200" y1="1330" x2="178" y2="1354"/><line x1="480" y1="1330" x2="458" y2="1354"/><line x1="560" y1="1330" x2="538" y2="1354"/></g>
+        <text x="300" y="640" font-size="30" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="8">AQUÍ VA EL</text>
+        <text x="300" y="685" font-size="30" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="8">ESCANTILLÓN</text>
+        <text x="300" y="730" font-size="15" fill="#e8e6e0" opacity="0.45" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="5">DXF EN PREPARACIÓN</text>
+      </svg>
+      <div class="pcap"><u>ESCANTILLÓN · ENVOLVENTE</u><i class="pln"></i><b>De la fundación a la cubierta</b><small>DXF en preparación — grosores reales</small></div>
+    </div>
+  </section>
+
+  <!-- 10 IMAGEN 01 · render exterior -->
+  <section class="slide" id="sIMG1" data-name="IMAGEN 01" data-ground="navy">
+    <div class="imgWrap">
+      <div class="kicker">12 — IMAGEN</div>
+      <div class="imgFrame"><i class="ck tl"></i><i class="ck tr"></i><i class="ck bl"></i><i class="ck br"></i>
+        <div class="imgPh">RENDER EXTERIOR HÉROE<small>IMAGEN EN PREPARACIÓN · MAQUETA DIGITAL + IA CON TRAZABILIDAD</small></div>
+      </div>
+      <div class="pcap"><u>IMAGEN 01 · EXTERIOR</u><i class="pln"></i><b>La posta en su territorio</b><small>Par maqueta/IA + prompt según bases — solo código PAC7.0-WSEF</small></div>
+    </div>
+  </section>
+
+  <!-- 11 IMAGEN 02 · render interior -->
+  <section class="slide" id="sIMG2" data-name="IMAGEN 02" data-ground="navy">
+    <div class="imgWrap">
+      <div class="kicker">13 — IMAGEN</div>
+      <div class="imgFrame"><i class="ck tl"></i><i class="ck tr"></i><i class="ck bl"></i><i class="ck br"></i>
+        <div class="imgPh">RENDER INTERIOR PEATONAL<small>IMAGEN EN PREPARACIÓN · MAQUETA DIGITAL + IA CON TRAZABILIDAD</small></div>
+      </div>
+      <div class="pcap"><u>IMAGEN 02 · INTERIOR</u><i class="pln"></i><b>Clínica por dentro, hogar por escala</b><small>Par maqueta/IA + prompt según bases — solo código PAC7.0-WSEF</small></div>
+    </div>
+  </section>
+
+  <!-- 10 CIERRE · cobalto -->
+  <section class="slide center ground-cobalt" id="s9" data-name="CIERRE" data-ground="cobalt">
+    <div class="panel">
+      <div class="sub">POSTA RURAL INDUSTRIALIZADA · FRUTILLAR</div>
+      <h2>PAC7.0-WSEF</h2>
+      <p>PROYECTAR A CONCIENCIA 7.0 · MMC</p>
+    </div>
+  </section>
+
+</div>
+
+<div id="dots"></div>
+<div id="nav"><button id="prev" aria-label="Slide anterior">←</button><button id="next" aria-label="Slide siguiente">→</button></div>
+<div id="anaHit"></div>
+<div id="rotHint"><b>GIRA EL EQUIPO</b> · DECK EN 16:9</div>
+<div id="hint">← DESLIZA / FLECHAS →</div>
+<div id="montHud"><u>FASE 01 · 05</u><i class="ln"></i><b>Tornillos de fundación</b><small>Base prefabricada · sin faena húmeda</small>
+  <span class="msegs"><i></i><i></i><i></i><i></i><i></i></span></div>
+<!-- planta CAD (slide 6): SVG horneado desde DXF, grosores reales -->
+<div id="plantaWrap">
+  <div id="plantaStage"><div id="plantaSvg"></div><div id="plantaB"></div>
+    <div id="indusTag">INDUSTRIALIZACIÓN DEL MÓDULO</div></div>
+  <div class="pcap"><u>PLANTA · BOX DE CONSULTA</u><i class="pln"></i><b>Equipamiento según fichas MINSAL</b><small>Códigos M · E · T — dibujo Revit → AutoCAD, grosores de ploteo conservados</small></div>
+</div>
+<!-- plano general + corte (slide 7) -->
+<div id="planoWrap">
+  <div id="planoSvg"></div>
+  <div class="pcap"><u>PLANTA GENERAL · POSTA</u><i class="pln"></i><b>≈ 200 m² · agregación modular</b><small>DXF en preparación — pipeline de grosores listo</small></div>
+  <div id="corteBox"><div id="corteSvg"></div>
+    <div class="pcap"><u>CORTE A–A'</u><i class="pln"></i><b>Sección por la línea marcada en planta</b><small>DXF en preparación</small></div>
+  </div>
+</div>
+
+<div class="callout" data-id="ptA"><u>A · PLANTA MMC</u><i class="ln"></i><b>Puerto Montt · teórico</b><small>41°28'S · 72°56'W</small></div>
+<div class="callout" data-id="ptB"><u>B · TERRENO</u><i class="ln"></i><b>Centinela de la Guacha</b><small>41°06'S · 72°57'W</small></div>
+<div id="globeTag"><u>REGIÓN DE LOS LAGOS · CHILE</u><i class="ln"></i><b>Centinela de la Guacha</b><small>41°06'S · 72°57'W</small></div>
+<div class="callout" data-id="ruta"><u>TRAYECTO A→B</u><i class="ln"></i><b>≈ 71 km · 1 h 08 min</b><small>Asfalto → ripio → camino rural</small></div>
+<div class="callout" data-id="acceso"><u>ACCESIBILIDAD</u><i class="ln"></i><b>Últimos 6 km · rural estacional</b><small>No se llega en cualquier vehículo</small></div>
+<div class="callout" data-id="modulo"><u>MÓDULO REF.</u><i class="ln"></i><b>3,26 × 8,58 m</b><small>Grilla por confirmar</small></div>
+<div class="callout" data-id="metalcon"><u>SISTEMA</u><i class="ln"></i><b>Acero + Metalcon</b><small>Fabricación off-site</small></div>
+<div class="callout" data-id="specmod"><u>MÓDULO EN RUTA</u><i class="ln"></i><b>3,5 × 8,0 × 3,2 m</b><small>Carga indivisible · acero + Metalcon</small></div>
+<div class="callout" data-id="spech"><u>GÁLIBO</u><i class="ln"></i><b>Altura total ≈ 4,3 m</b><small>Ancho 3,5 &gt; 2,6 m · permiso especial + escolta (DS 158)</small></div>
+<div class="callout" data-id="speceje"><u>PLATAFORMA</u><i class="ln"></i><b>Cama baja · 3 ejes</b><small>Altura 0,95 m · montaje directo</small></div>
+<div class="callout" data-id="lay1"><u>CAPA 01 · PISO</u><i class="ln"></i><b>Plataforma de piso</b><small>Entramado Metalcon + placa</small></div>
+<div class="callout" data-id="lay2"><u>CAPA 02 · ESTRUCTURA</u><i class="ln"></i><b>Perfiles galvanizados</b><small>Metalcon</small></div>
+<div class="callout" data-id="lay3"><u>CAPA 03 · INSTALACIONES</u><i class="ln"></i><b>Kit integrado</b><small>Eléctrico + sanitario</small></div>
+<div class="callout" data-id="lay4"><u>CAPA 04 · TABIQUERÍA</u><i class="ln"></i><b>Placa yeso-cartón</b><small>Knauf</small></div>
+<div class="callout" data-id="lay5"><u>CAPA 05 · ENVOLVENTE</u><i class="ln"></i><b>Panel SIP</b><small>Ingepanel</small></div>
+<div class="callout" data-id="lay6"><u>CAPA 06 · FACHADA</u><i class="ln"></i><b>StoPanel prefabricado</b><small>Sto</small></div>
+<div class="callout" data-id="lay7"><u>CAPA 07 · CUBIERTA</u><i class="ln"></i><b>Plancha + hojalatería</b></div>
+<div class="callout ana" data-id="ana0"><u>01 · CRUJÍA SUELO</u><i class="ln"></i><b>Ecopilote 88,9 × 1600 + emparrillado</b><small>34 elementos · TRON 88×3,2 / 76×5 · IFC4</small></div>
+<div class="callout ana" data-id="ana1"><u>02 · CRUJÍA TIPO</u><i class="ln"></i><b>9,35 × 7,35 × 5,24 m</b><small>134 elementos · acero + Danpal · IFC4</small></div>
+<div class="callout ana" data-id="ana2"><u>03 · CRUJÍA UNIONES</u><i class="ln"></i><b>Nudo apernado 3,84 × 3,90 m</b><small>46 elementos · placas + pernos modelados</small></div>
+<div class="callout" data-id="anaF_viga"><u>VIGAS ALIGERADAS</u><i class="ln"></i><b>200/75 · 150/75 perforadas</b><small>Acero · paso de instalaciones</small></div>
+<div class="callout" data-id="anaF_diagonal"><u>ARRIOSTRAMIENTO</u><i class="ln"></i><b>TRON 60.3 × 3.2</b><small>Tubular · cruces de San Andrés</small></div>
+<div class="callout" data-id="anaF_nudo"><u>NUDOS APERNADOS</u><i class="ln"></i><b>Placas de momento + apoyos de viga</b><small>Pernos modelados · montaje en seco</small></div>
+<div class="callout" data-id="anaF_subestructura"><u>SUBESTRUCTURA DE PIEL</u><i class="ln"></i><b>50 × 150 · 40 × 80 mm</b><small>Acero negro · Metalcon</small></div>
+<div class="callout" data-id="anaF_danpal"><u>PANEL TRANSLÚCIDO</u><i class="ln"></i><b>Danpalon 600</b><small>Danpal · luz difusa, sin puente térmico</small></div>
+<div class="callout" data-id="anaF_pilote"><u>PILOTE DE FUNDACIÓN</u><i class="ln"></i><b>Ecopilote 88,9 × 1600</b><small>Hincado sin faena húmeda</small></div>
+<div class="callout" data-id="anaF_tubular"><u>EMPARRILLADO TUBULAR</u><i class="ln"></i><b>TRON 88 × 3,2 · 76 × 5</b><small>Recibe el suelo ventilado</small></div>
+<div class="callout" data-id="anaF_perfil"><u>PERFILES SECUNDARIOS</u><i class="ln"></i><b>100/50 · 80/40</b><small>Costaneras y cierres</small></div>
+<div class="callout" data-id="montaje"><u>MONTAJE</u><i class="ln"></i><b>≈ 2 h por módulo</b><small>Hasta −40% plazo de obra</small></div>
+<div class="callout" data-id="m2"><u>PROGRAMA</u><i class="ln"></i><b>≈ 200 m² · 3 recintos</b><small>Fichas MINSAL</small></div>
+<div class="callout" data-id="muro"><u>TRANSMITANCIA</u><i class="ln"></i><b>Muro U ≤ 0,40 W/m²K</b><small>Rt ≥ 2,50</small></div>
+<div class="callout" data-id="ach"><u>HERMETICIDAD</u><i class="ln"></i><b>5 ACH @ 50 Pa</b></div>
+<div class="callout" data-id="junta"><u>JUNTA ENTRE MÓDULOS</u><i class="ln"></i><b>Sin puente térmico</b><small>Panel continuo sobre módulos</small></div>
+<script src="lib/three.min.js"></script>
+<script src="lib/AsciiEffect.js"></script>
+<script src="lib/gsap.min.js"></script>
+<script src="lib/terreno_real.js"></script>
+<script src="lib/planta_box.js"></script>
+<script src="lib/earth_map.js"></script>
+<script src="lib/truck_wire.js"></script>
+<script src="lib/truck_solid.js"></script>
+<script src="lib/ifc_solid.js"></script>
+<script src="lib/crujia_tipo.js"></script>
+<script src="lib/crujia_uniones.js"></script>
+<script src="lib/crujia_montaje.js"></script>
+<script src="lib/ecopilote.js"></script>
+<script>
+/* ================= ESCENA WIREFRAME (grounds navy) ================= */
+const WIRE=0xe8e6e0, DIM=0xa9c6f5, ACC=0xffb057, GRID=0x5f92e6, RING=0x9cc0f2;
+const COBALT_SLIDES=[0,13];
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(); scene.fog=new THREE.Fog(0x1466e0,95,270);
+const camera=new THREE.PerspectiveCamera(42,1,0.1,600);
+/* dimensiones utiles del escenario: en vertical el deck va rotado 90deg, asi que se invierten */
+const isPortrait=()=>matchMedia('(orientation:portrait)').matches;
+const VW=()=>document.body.clientWidth||innerWidth;      /* ancho REAL del escenario */
+const VH=()=>document.body.clientHeight||innerHeight;
+function resize(){const w=VW(),h=VH();
+  document.documentElement.style.setProperty('--sw',w+'px');   /* tipografia a escala del escenario */
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize); resize();
+
+function edges(geo,color,opacity){const m=new THREE.LineBasicMaterial({color,transparent:true,opacity:opacity??1});const l=new THREE.LineSegments(new THREE.EdgesGeometry(geo),m);l.userData.total=l.geometry.attributes.position.count;return l;}
+function setDraw(obj,t){obj.traverse(n=>{if(n.isLineSegments&&n.userData.total){n.geometry.setDrawRange(0,Math.floor(n.userData.total*THREE.MathUtils.clamp(t,0,1)));}});}
+function circleLine(r,seg,color){const pts=[];for(let i=0;i<=seg;i++){const a=i/seg*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,0));}return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color,transparent:true}));}
+
+const grid=new THREE.GridHelper(420,84,GRID,GRID); grid.material.transparent=true; grid.material.opacity=.32; scene.add(grid);
+const MOD_L=8.58,MOD_H=3.2,MOD_W=3.26;
+function makeModule(color){const g=new THREE.Group();g.add(edges(new THREE.BoxGeometry(MOD_L,MOD_H,MOD_W),color??WIRE));g.add(edges(new THREE.BoxGeometry(MOD_L*0.96,MOD_H*0.9,MOD_W*0.9),DIM,.45));return g;}
+const FACTORY=new THREE.Vector3(-60,MOD_H/2,0);
+const hero=makeModule(); hero.position.copy(FACTORY); scene.add(hero);
+const factory=new THREE.Group();
+for(let i=-1;i<=1;i++){const p=edges(new THREE.BoxGeometry(0.4,6,8),DIM,.8);p.position.set(FACTORY.x+i*5,3,0);factory.add(p);} scene.add(factory);
+const routeCurve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-60,0.05,0),new THREE.Vector3(-30,0.05,14),new THREE.Vector3(0,0.05,0));
+const route=new THREE.Line(new THREE.BufferGeometry().setFromPoints(routeCurve.getPoints(120)),new THREE.LineDashedMaterial({color:ACC,dashSize:1.2,gapSize:.8}));
+route.computeLineDistances(); route.userData.total=route.geometry.attributes.position.count; scene.add(route);
+const marker=new THREE.Group();
+const pin=edges(new THREE.ConeGeometry(1.2,3,6),ACC); pin.rotation.x=Math.PI; pin.position.y=4; marker.add(pin);
+for(let r of[4,7,10.5]){const c=circleLine(r,48,RING);c.rotation.x=-Math.PI/2;c.position.y=.04;marker.add(c);} scene.add(marker);
+const truck=new THREE.Group();
+const chassis=edges(new THREE.BoxGeometry(11,0.5,2.8),WIRE); chassis.position.set(0,0.8,0); truck.add(chassis);
+const cab=edges(new THREE.BoxGeometry(2.4,2.4,2.6),WIRE); cab.position.set(-6.2,1.9,0); truck.add(cab);
+[[-5,-1.4],[-5,1.4],[-1.5,-1.4],[-1.5,1.4],[3,-1.4],[3,1.4]].forEach(([x,z])=>{const w=circleLine(0.7,16,WIRE);w.position.set(x,0.7,z);truck.add(w);});
+truck.position.set(FACTORY.x,0,0); scene.add(truck);
+const posta=new THREE.Group(); const slots=[];
+for(let ix=0;ix<2;ix++)for(let iz=0;iz<3;iz++){slots.push(new THREE.Vector3((ix-0.5)*MOD_L,MOD_H/2,(iz-1)*MOD_W));}
+const postaMods=slots.map((s,i)=>{const m=makeModule();m.userData.target=s;m.position.copy(s).setY(s.y+40+i*6);posta.add(m);return m;});
+scene.add(posta);
+const fillMat=new THREE.MeshBasicMaterial({color:ACC,transparent:true,opacity:0,side:THREE.DoubleSide});
+slots.forEach(s=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(MOD_L*0.999,MOD_H*0.999,MOD_W*0.999),fillMat);mesh.position.copy(s);posta.add(mesh);});
+const skin=new THREE.Group();
+const skinPlanes=[WIRE,WIRE,ACC,ACC].map((c)=>{const p=edges(new THREE.PlaneGeometry(10,3.4),c);p.position.set(0,MOD_H/2,MOD_W*1.5+0.01);skin.add(p);return p;});
+skin.visible=false; scene.add(skin);
+const replicas=new THREE.Group();
+[[-70,-50],[65,-45],[55,60],[-60,70]].forEach(([x,z])=>{const r=makeModule(DIM);r.scale.set(.9,.9,.9);r.position.set(x,MOD_H/2*.9,z);const ring=circleLine(9,40,RING);ring.rotation.x=-Math.PI/2;ring.position.set(x,.04,z);replicas.add(r,ring);});
+replicas.visible=false; scene.add(replicas);
+
+/* ===== SLIDE 1 · TERRITORIO A→B (Puerto Montt → Centinela de la Guacha) ===== */
+const prob=new THREE.Group();
+const PA=new THREE.Vector3(-4,0,12), PB=new THREE.Vector3(16,0,-8);
+/* A · PLANTA INDUSTRIALIZADORA (procedural, según referencia real: nave con cubierta a dos aguas
+   + anexo menor + monitor de cumbrera + estanque + explanada + cierre perimetral con acceso) */
+const occMatP=new THREE.MeshBasicMaterial({color:0x1466e0,polygonOffset:true,polygonOffsetFactor:3,polygonOffsetUnits:3});
+function gablePrism(L,D,wallH,ridgeH){                              /* prisma a dos aguas, largo en X */
+  const s=new THREE.Shape();
+  s.moveTo(-D/2,0); s.lineTo(D/2,0); s.lineTo(D/2,wallH); s.lineTo(0,ridgeH); s.lineTo(-D/2,wallH); s.closePath();
+  const g=new THREE.ExtrudeGeometry(s,{depth:L,bevelEnabled:false});
+  g.rotateY(Math.PI/2); g.translate(-L/2,0,0);
+  return g;
+}
+function lineSet(P,color,op){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+  const m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:op??1}));m.userData.total=P.length/3;return m;}
+const planta=new THREE.Group(), plantaOcc=new THREE.Group();
+(()=>{
+  const add=(geo,cx,cy,cz)=>{const w=edges(geo,WIRE);w.position.set(cx,cy,cz);planta.add(w);
+    const o=new THREE.Mesh(geo,occMatP);o.position.set(cx,cy,cz);plantaOcc.add(o);};
+  add(gablePrism(8.6,4.4,1.8,2.75),0,0,0);                          /* nave principal */
+  add(gablePrism(3.2,3.0,1.25,1.8),5.9,0,0.4);                      /* anexo menor */
+  add(new THREE.BoxGeometry(5.2,0.26,0.36),-0.6,2.82,0);            /* monitor de cumbrera (ventilación) */
+  add(new THREE.CylinderGeometry(0.7,0.7,1.5,8),6.0,0.75,-2.5);     /* estanque de agua */
+  /* detalles de fachada (loops de línea, fuera del ocultador) */
+  const P=[]; const seg=(a,b)=>P.push(...a,...b);
+  const rect=(cx,cy,cz,w,h,axis)=>{
+    if(axis==='x'){seg([cx,cy-h/2,cz-w/2],[cx,cy-h/2,cz+w/2]);seg([cx,cy+h/2,cz-w/2],[cx,cy+h/2,cz+w/2]);
+      seg([cx,cy-h/2,cz-w/2],[cx,cy+h/2,cz-w/2]);seg([cx,cy-h/2,cz+w/2],[cx,cy+h/2,cz+w/2]);}
+    else{seg([cx-w/2,cy-h/2,cz],[cx+w/2,cy-h/2,cz]);seg([cx-w/2,cy+h/2,cz],[cx+w/2,cy+h/2,cz]);
+      seg([cx-w/2,cy-h/2,cz],[cx-w/2,cy+h/2,cz]);seg([cx+w/2,cy-h/2,cz],[cx+w/2,cy+h/2,cz]);}
+  };
+  rect(-4.32,0.72,0,1.7,1.44,'x');                                  /* portón de acceso (frontón -X) */
+  seg([-4.32,1.62,-1.05],[-4.32,1.62,1.05]);                        /* riel del portón */
+  for(let i=0;i<5;i++){ const x=-3.3+i*1.65;                        /* ventanas altas, ambas fachadas */
+    rect(x,1.32,2.21,1.05,0.34,'z'); rect(x,1.32,-2.21,1.05,0.34,'z'); }
+  rect(7.52,0.6,0.4,1.1,1.1,'x');                                   /* puerta del anexo (+X) */
+  planta.add(lineSet(P,WIRE));
+  /* explanada + cierre perimetral (postes + 2 hebras) con portón en -X */
+  const E=[]; const es=(a,b)=>E.push(...a,...b);
+  const ex=7.4, ez=4.6;
+  es([-ex,0.02,-ez],[ex,0.02,-ez]); es([ex,0.02,-ez],[ex,0.02,ez]); es([ex,0.02,ez],[-ex,0.02,ez]); es([-ex,0.02,ez],[-ex,0.02,-ez]);
+  const fx=8.4, fz=5.4, fh=0.5, gate=1.6;
+  const post=(x,z)=>es([x,0,z],[x,fh,z]);
+  const run=(x1,z1,x2,z2)=>{const dx=x2-x1,dz=z2-z1,n=Math.max(1,Math.round(Math.hypot(dx,dz)/1.5));
+    for(let i=0;i<=n;i++)post(x1+dx*i/n,z1+dz*i/n);
+    for(const h of[0.24,0.48])es([x1,h,z1],[x2,h,z2]);};
+  run(-fx,-fz,fx,-fz); run(fx,-fz,fx,fz); run(fx,fz,-fx,fz);
+  run(-fx,fz,-fx,gate/2+0.2); run(-fx,-gate/2-0.2,-fx,-fz);
+  es([-fx-2.6,0.02,-0.8],[-fx,0.02,-0.8]); es([-fx-2.6,0.02,0.8],[-fx,0.02,0.8]);  /* camino de acceso */
+  planta.add(lineSet(E,WIRE,0.85));
+  planta.add(plantaOcc);
+  planta.position.set(PA.x,0,PA.z); planta.rotation.y=-0.6;
+})();
+prob.add(planta);
+/* B · relieve wireframe placeholder */ // TODO: reemplazar con topografía real de Gabriel
+/* TERRENO REAL: curvas de nivel DEM de Centinela de la Guacha (lat -41,1 · lon -73,0) */
+const terr=new THREE.Group();
+(()=>{
+  const bin=atob(TERRENO_B64),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const p=new Float32Array(bytes.buffer);
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  const m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:WIRE,transparent:true}));
+  m.userData.total=p.length/3;
+  m.scale.setScalar(10);                       /* parche ~4,9 km reales → 20 unidades */
+  terr.add(m);
+  terr.position.set(PB.x,0.05,PB.z);
+})();
+prob.add(terr);
+/* pines A/B · marcador "map pin" (gota) que mira a cámara + anillo en suelo */
+function mapPin(p){
+  const g=new THREE.Group();
+  const hc=3.0, r=1.0;
+  const head=circleLine(r,32,ACC); head.position.y=hc; g.add(head);
+  const hole=circleLine(r*0.38,18,ACC); hole.position.y=hc; g.add(hole);
+  const v=[new THREE.Vector3(-r*0.72,hc-r*0.72,0),new THREE.Vector3(0,0.1,0),new THREE.Vector3(r*0.72,hc-r*0.72,0)];
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(v),new THREE.LineBasicMaterial({color:ACC,transparent:true})));
+  g.position.set(p.x,0,p.z); g.userData.billboard=true;
+  return g;
+}
+function gRing(p){const r=circleLine(1.5,36,ACC); r.rotation.x=-Math.PI/2; r.position.set(p.x,.06,p.z); return r;}
+const pinA=mapPin(PA),pinB=mapPin(PB),ringA=gRing(PA),ringB=gRing(PB);
+pinA.position.y=3.7;  /* pin A flota sobre el galpón */
+prob.add(pinA,pinB,ringA,ringB);
+/* ruta 3 tramos: asfalto → ripio → camino difícil */
+const rn=[PA.clone().setY(0.05),new THREE.Vector3(5,0.05,5),new THREE.Vector3(11,0.05,-1),PB.clone().setY(0.05)];
+function seg(a,b,dash,gap){const geo=new THREE.BufferGeometry().setFromPoints([a,b]);const m=dash?new THREE.LineDashedMaterial({color:ACC,dashSize:dash,gapSize:gap,transparent:true}):new THREE.LineBasicMaterial({color:ACC,transparent:true});const l=new THREE.Line(geo,m);if(dash)l.computeLineDistances();return l;}
+const segs=[seg(rn[0],rn[1],0,0),seg(rn[1],rn[2],1.1,0.7),seg(rn[2],rn[3],0.22,0.5)];
+segs.forEach(s=>prob.add(s));
+/* recuadros de ubicación estilo satelital (marco + ticks de esquina) */
+function rectFrame(w,d,color){
+  const h=w/2,v=d/2,t=Math.min(w,d)*0.14; const P=[];
+  const sg=(ax,az,bx,bz)=>{P.push(ax,0,az,bx,0,bz);};
+  sg(-h,-v,h,-v); sg(h,-v,h,v); sg(h,v,-h,v); sg(-h,v,-h,-v);
+  [[-h,-v,-1,-1],[h,-v,1,-1],[h,v,1,1],[-h,v,-1,1]].forEach(([x,z,sx,sz])=>{sg(x,z,x+sx*t,z); sg(x,z,x,z+sz*t);});
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+  const m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color,transparent:true}));
+  m.userData.total=P.length/3; return m;
+}
+const frameA=rectFrame(14,10,WIRE); frameA.position.set(PA.x,0.07,PA.z); prob.add(frameA);
+const frameB=rectFrame(16,12,WIRE); frameB.position.set(PB.x,0.07,PB.z); prob.add(frameB);
+prob.position.x=10;  /* correr la escena a la derecha (mitad izq libre; margen para el giro) */
+prob.visible=false; scene.add(prob);
+
+/* ===== SLIDE 2 · GLOBO 3D (secuencia spur: orbe → descenso) ===== */
+const GC=new THREE.Vector3(8,10,0), GR=13;
+const globeGrp=new THREE.Group();
+(()=>{
+  for(let i=0;i<9;i++){ const c=circleLine(GR,72,WIRE); c.rotation.y=i*Math.PI/9; c.userData.baseOp=0.38; globeGrp.add(c); }
+  for(let j=-3;j<=3;j++){ const la=j*Math.PI/8, r=GR*Math.cos(la);
+    const c=circleLine(r,72,WIRE); c.rotation.x=-Math.PI/2; c.position.y=GR*Math.sin(la); c.userData.baseOp=0.38; globeGrp.add(c); }
+  /* nube de puntos (determinista) */
+  const N=520, pos=new Float32Array(N*3); let seed=42;
+  const rnd=()=>{seed=(seed*16807)%2147483647; return seed/2147483647;};
+  for(let i=0;i<N;i++){ const u=rnd()*2-1, ph=rnd()*Math.PI*2, rr=Math.sqrt(1-u*u);
+    pos[i*3]=GR*rr*Math.cos(ph); pos[i*3+1]=GR*u; pos[i*3+2]=GR*rr*Math.sin(ph); }
+  const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const pts=new THREE.Points(pg,new THREE.PointsMaterial({color:WIRE,size:0.22,transparent:true,sizeAttenuation:true}));
+  pts.userData.baseOp=0.8; globeGrp.add(pts);
+  /* marcador: Centinela de la Guacha (lat -41,1 · lon -73,0) */
+  const la=-41.1*Math.PI/180, lo=-73.0*Math.PI/180;
+  const md=new THREE.Vector3(Math.cos(la)*Math.cos(lo),Math.sin(la),-Math.cos(la)*Math.sin(lo)).normalize();
+  const mk=new THREE.Group();
+  const ring=circleLine(1.0,24,ACC); ring.userData.baseOp=1; mk.add(ring);
+  const dot=circleLine(0.24,10,ACC); dot.userData.baseOp=1; mk.add(dot);
+  mk.position.copy(md.clone().multiplyScalar(GR*1.003));
+  mk.lookAt(md.clone().multiplyScalar(GR*3));
+  globeGrp.userData.marker=mk; globeGrp.add(mk);
+  /* rotar el globo para que el marcador encare la cámara */
+  globeGrp.quaternion.setFromUnitVectors(md, new THREE.Vector3(0.14,0.06,1).normalize());
+})();
+globeGrp.position.copy(GC); globeGrp.visible=false; scene.add(globeGrp);
+
+/* ===== CAMIÓN A ESCALA: tractor real + plataforma + módulo (slide 03) ===== */
+function decodeLS(b64,color){
+  const bin=atob(b64),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const p=new Float32Array(bytes.buffer);
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  const m=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color,transparent:true}));
+  m.userData.total=p.length/3; return m;
+}
+const truckRig=new THREE.Group();
+(()=>{                       /* unidades = metros; rig mira hacia +X */
+  /* material ocultador: caras color fondo → el camión se ve SÓLIDO (hidden-line) */
+  const occM=new THREE.MeshBasicMaterial({color:0x1466e0,polygonOffset:true,polygonOffsetFactor:2,polygonOffsetUnits:2});
+  const occ=(geo)=>new THREE.Mesh(geo,occM);
+  const deckW=3.7,deckH=0.30,deckY=0.95,deckL=13;   /* cama baja: plataforma a 0,95 m */
+  const deck=edges(new THREE.BoxGeometry(deckL,deckH,deckW),WIRE); deck.position.set(0,deckY,0); truckRig.add(deck);
+  const deckO=occ(new THREE.BoxGeometry(deckL,deckH,deckW)); deckO.position.copy(deck.position); truckRig.add(deckO);
+  /* ruedas SÓLIDAS: aro exterior + hub + radios + disco ocultador (no se ve a través) */
+  function wheel(){
+    const w=new THREE.Group(), R=0.52;
+    const disc=occ(new THREE.CylinderGeometry(R*0.985,R*0.985,0.3,18));
+    disc.rotation.x=Math.PI/2; w.add(disc);
+    [-0.16,0.16].forEach(off=>{ const c=circleLine(R,22,WIRE); c.position.z=off; w.add(c); });
+    const face=0.165;                                     /* detalle solo en la cara exterior */
+    const h=circleLine(R*0.3,12,WIRE); h.position.z=face; w.add(h);
+    for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+0.3;
+      const g=new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(Math.cos(a)*R*0.3,Math.sin(a)*R*0.3,face),
+        new THREE.Vector3(Math.cos(a)*R*0.94,Math.sin(a)*R*0.94,face)]);
+      w.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:WIRE,transparent:true})));
+    }
+    return w;
+  }
+  /* mirror: cara exterior siempre hacia afuera */
+  [-5.6,-4.35,-3.1].forEach(x=>[-1.85,1.85].forEach(z=>{const w=wheel();w.position.set(x,0.52,z);w.rotation.y=z<0?Math.PI:0;truckRig.add(w);}));
+  /* ruedas del TRACTOR (el horneado del glb las perdió): delanteras + duales traseras */
+  [13.6,9.9,8.6].forEach(x=>[-1.32,1.32].forEach(z=>{const w=wheel();w.position.set(x,0.52,z);w.rotation.y=z<0?Math.PI:0;truckRig.add(w);}));
+  const gn=edges(new THREE.BoxGeometry(2.2,deckY,2.4),WIRE); gn.position.set(deckL/2+0.4,deckY/2,0); truckRig.add(gn);
+  const gnO=occ(new THREE.BoxGeometry(2.2,deckY,2.4)); gnO.position.copy(gn.position); truckRig.add(gnO);
+  const modL=8,modH=3.2,modW=3.5;                      /* módulo 3,5×8×3,2 */
+  const my=deckY+deckH/2+modH/2;
+  const mod=edges(new THREE.BoxGeometry(modL,modH,modW),WIRE); mod.position.set(-0.5,my,0); truckRig.add(mod);
+  const modO=occ(new THREE.BoxGeometry(modL,modH,modW)); modO.position.copy(mod.position); truckRig.add(modO);
+  const tractor=decodeLS(TRUCK_B64,WIRE);
+  const tS=8.5, nH=TRUCK_WHL[1]/Math.max(...TRUCK_WHL);   /* geo normalizada maxdim=1 → largo 8,5 m */
+  tractor.scale.setScalar(tS); tractor.rotation.y=Math.PI/2;
+  tractor.position.set(deckL/2+4.4, nH*tS/2, 0); truckRig.add(tractor);
+  /* malla sólida del tractor (ocultadora) */
+  (()=>{
+    const dv=atob(TRUCKS_V_B64),bv=new Uint8Array(dv.length); for(let i=0;i<dv.length;i++)bv[i]=dv.charCodeAt(i);
+    const df=atob(TRUCKS_F_B64),bf=new Uint8Array(df.length); for(let i=0;i<df.length;i++)bf[i]=df.charCodeAt(i);
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(bv.buffer),3));
+    g.setIndex(new THREE.BufferAttribute(new Uint16Array(bf.buffer),1));
+    const m=new THREE.Mesh(g,occM);
+    m.scale.copy(tractor.scale); m.rotation.copy(tractor.rotation); m.position.copy(tractor.position);
+    truckRig.add(m);
+  })();
+})();
+truckRig.traverse(n=>{if(n.material){n.material.transparent=false;n.material.opacity=1;}}); /* camión opaco, no transparente */
+truckRig.scale.setScalar(0.62); truckRig.position.set(-13.5,0,24); truckRig.rotation.y=0.3;  /* protagonista */
+truckRig.visible=false; scene.add(truckRig);
+
+/* ===== SLIDE 4 · EL MÓDULO: axonometría + explode preliminar por capas ===== */
+const MC=new THREE.Vector3(0,0,70);
+const modExp=new THREE.Group(); modExp.position.copy(MC);
+const modLayers=[];
+(()=>{
+  const L=8,W=3.5;
+  const mk=(w,h,d,c,o)=>edges(new THREE.BoxGeometry(w,h,d),c,o);
+  const layer=(grp,baseY,dy)=>{grp.position.y=baseY; modExp.add(grp); modLayers.push({grp,baseY,dy});};
+  /* 1 · plataforma de piso */
+  const piso=new THREE.Group(); piso.add(mk(L,0.25,W,WIRE));
+  for(let i=1;i<6;i++){const j=mk(0.06,0.2,W*0.94,DIM,.85); j.position.x=-L/2+i*L/6; piso.add(j);}
+  layer(piso,0.125,0);
+  /* 2 · estructura Metalcon */
+  const est=new THREE.Group(); est.add(mk(L*0.98,2.9,W*0.94,WIRE));
+  for(let i=0;i<7;i++){const g=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-L*0.49+i*L*0.98/6,-1.45,W*0.47),new THREE.Vector3(-L*0.49+i*L*0.98/6,1.45,W*0.47)]);
+    est.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:DIM,transparent:true})));}
+  layer(est,1.7,2.6);
+  /* 3 · kit de instalaciones */
+  const inst=new THREE.Group();
+  const box=mk(1.4,0.6,0.9,ACC); box.position.x=-L*0.33; inst.add(box);
+  const duct=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-L*0.33,0,0),new THREE.Vector3(L*0.38,0,0)]);
+  inst.add(new THREE.Line(duct,new THREE.LineBasicMaterial({color:ACC,transparent:true})));
+  layer(inst,0.6,5.4);
+  /* 4 · tabiquería interior */
+  const tab=new THREE.Group(); [-1.1,1.6].forEach(x=>{const t=mk(0.08,2.7,W*0.9,WIRE); t.position.x=x; tab.add(t);});
+  layer(tab,1.6,7.6);
+  /* 5 · envolvente SIP */
+  const sip=new THREE.Group(); sip.add(mk(L*1.02,3.0,W*1.08,WIRE));
+  layer(sip,1.7,10.4);
+  /* 6 · fachada StoPanel */
+  const eifs=new THREE.Group(); eifs.add(mk(L*1.05,3.05,W*1.14,WIRE));
+  layer(eifs,1.72,13.4);
+  /* 7 · cubierta */
+  const cub=new THREE.Group(); cub.add(mk(L*1.06,0.22,W*1.16,WIRE));
+  const rg=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-L*0.53,0.3,0),new THREE.Vector3(L*0.53,0.3,0)]);
+  cub.add(new THREE.Line(rg,new THREE.LineBasicMaterial({color:DIM,transparent:true})));
+  layer(cub,3.3,15.8);
+})();
+modExp.visible=false; scene.add(modExp);
+
+/* ===== SLIDE 05 · MONTAJE 4D (estilo SynchroPro): 5 fases de abajo hacia arriba =====
+   F1 tornillos de fundación · F2 vigas aligeradas perforadas · F3 suelo ventilado RF
+   F4 módulo volumétrico · F5 fachada inclinada proyectada en cubierta.
+   Placeholder procedural — cada grupo se reemplazará por su IFC real. */
+const MONT_N=['Pilotes de fundación','Vigas aligeradas perforadas','Suelo ventilado','Módulo volumétrico','Fachada inclinada + cubierta'];
+const MONT_S=['Ecopilote 88,9 × 1600 · sin faena húmeda','200/75 y 150/75 · pasos de instalaciones','Emparrillado tubular + losa · cámara ventilada','Muros, ventanas y cubierta · llega terminado','Danpalon 600 · piel proyectada en cubierta'];
+const montG=[], montScrews=[];
+/* ===== MONTAJE 4D (slide 07): geometria IFC real, 5 fases, wireframe de malla completa =====
+   Fuente: crujia_montaje.ifc | 12,16 x 13,39 x 8,03 m | 321.734 aristas
+   Reparto: fundacion 4 · vigas 8 · suelo ventilado 108 · modulo 30 · piel 187 elementos     */
+const MONT_Y=-3.75;              /* el terreno queda a y=0: los pilotes (3,75 m) bajo la grilla */
+const MONT_FASES=['fundacion','vigas','suelo','modulo','piel'];
+(()=>{
+  for(const k of MONT_FASES){
+    const d=MONTAJE_DATA[k]; const g=new THREE.Group();
+    if(d){
+      const bv=Uint8Array.from(atob(d.v),c=>c.charCodeAt(0));
+      const be=Uint8Array.from(atob(d.e),c=>c.charCodeAt(0));
+      const vi=new Int16Array(bv.buffer); const pos=new Float32Array(vi.length);
+      for(let i=0;i<vi.length;i++) pos[i]=vi[i]/1000;                    /* mm -> m */
+      const geo=new THREE.BufferGeometry();
+      geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      geo.setIndex(new THREE.BufferAttribute(new Uint32Array(be.buffer),1));
+      const mt=new THREE.LineBasicMaterial({color:WIRE,transparent:true,opacity:0.9});
+      const ls=new THREE.LineSegments(geo,mt);
+      ls.userData.total=geo.index.count;                                 /* dibujado progresivo */
+      const inner=new THREE.Group(); inner.rotation.x=-Math.PI/2; inner.add(ls);  /* IFC Z-up -> Y-up */
+      g.add(inner);
+    }
+    g.visible=false; g.position.set(0,MONT_Y,0); scene.add(g);
+    const mats=[]; g.traverse(n=>{if((n.isLine||n.isLineSegments)&&n.material)mats.push({mt:n.material,c0:n.material.color.clone()});});
+    montG.push({g,mats,baseX:0,baseY:MONT_Y,baseZ:0});
+  }
+})();
+const C_ACC=new THREE.Color(ACC), C_WIRE=new THREE.Color(WIRE);
+/* ===== ANATOMÍA DE LAS PARTES (slide 06): 3 IFC sombreados con contorno, a escala real ===== */
+const ANA_Z=200;                                   /* zona propia de la escena, lejos del resto */
+const ANA_SHIFT=1.5;                               /* corrimiento de la fila hacia la derecha del panel */
+const anaGrp=new THREE.Group(); anaGrp.visible=false; scene.add(anaGrp);
+const anaLight=new THREE.DirectionalLight(0xffffff,1.25); anaLight.position.set(-60,80,40); anaLight.target.position.set(0,0,ANA_Z); anaGrp.add(anaLight,anaLight.target);
+anaGrp.add(new THREE.AmbientLight(0xffffff,0.42));
+const anaPieces=[]; let anaSel=-1; const anaDrag={on:false,x:0,y:0,rot:0,tilt:0};
+const ANA_SHADE=new THREE.Color(0xe8e6e0), ANA_EDGE=0xffffff;
+function anaDecode(data,meta){
+  const g=new THREE.Group(), mats=[], fam={};
+  for(const k of Object.keys(meta.fams)){
+    const m=meta.fams[k];
+    const bv=Uint8Array.from(atob(data[k].v),c=>c.charCodeAt(0));
+    const bf=Uint8Array.from(atob(data[k].f),c=>c.charCodeAt(0));
+    const vi=new Int16Array(bv.buffer); const pos=new Float32Array(vi.length);
+    for(let i=0;i<vi.length;i++)pos[i]=vi[i]/1000;                      /* mm -> m */
+    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    geo.setIndex(new THREE.BufferAttribute(m.i32?new Uint32Array(bf.buffer):new Uint16Array(bf.buffer),1));
+    geo.computeVertexNormals();
+    const isPanel=k==='danpal', isNudo=k==='nudo';
+    const mat=new THREE.MeshLambertMaterial({color:ANA_SHADE,transparent:true,opacity:isPanel?0.35:1,side:THREE.DoubleSide});
+    mat.userData.o0=mat.opacity; mats.push(mat);
+    const mesh=new THREE.Mesh(geo,mat); g.add(mesh);
+    if(!isPanel){ const em=new THREE.LineBasicMaterial({color:ANA_EDGE,transparent:true,opacity:isNudo?0.35:0.55});
+      em.userData.o0=em.opacity; mats.push(em);
+      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo,isNudo?40:22),em)); }   /* contorno fino */
+    geo.computeBoundingBox(); const c=new THREE.Vector3(); geo.boundingBox.getCenter(c);
+    fam[k]={n:m.n,c};
+  }
+  const inner=new THREE.Group(); inner.rotation.x=-Math.PI/2; inner.add(g);   /* IFC Z-up -> Y-up */
+  const wrap=new THREE.Group(); wrap.add(inner);
+  for(const k in fam){ const c=fam[k].c.clone(); c.applyAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2); fam[k].c=c; }
+  return {g:wrap,mats,fam,dims:meta.dims};
+}
+(()=>{
+  /* 01 · crujía suelo: IFC real — Ecopilote 88,9 + emparrillado tubular */
+  const e=anaDecode(ECOPILOTE_DATA,ECOPILOTE_META);
+  e.x=0; e.restScale=2.2; e.zoomScale=4.0; e.spin=0.0062; e.phase=0.0; e.name='suelo'; anaPieces.push(e);
+  /* 02 · crujía tipo · 03 · crujía uniones (IFC reales) */
+  const t=anaDecode(CRUJIA_TIPO_DATA,CRUJIA_TIPO_META); t.x=0; t.restScale=1.0; t.zoomScale=1.5; t.spin=0.0050; t.phase=2.2; t.name='tipo'; anaPieces.push(t);
+  const u=anaDecode(CRUJIA_UNIONES_DATA,CRUJIA_UNIONES_META); u.x=0; u.restScale=2.1; u.zoomScale=4.2; u.spin=0.0078; u.phase=4.3; u.name='uniones'; anaPieces.push(u);
+  /* reparto horizontal a escala real: anchos reales + separación */
+  /* casilla = circulo que barre la pieza al girar sobre su eje: garantiza que nunca se pisan */
+  anaPieces.forEach(p=>{ p.g.scale.setScalar(p.restScale); p.g.rotation.y=0; p.g.position.set(0,0,0); anaGrp.add(p.g);
+    const bb=new THREE.Box3().setFromObject(p.g);
+    p.h=(bb.max.y-bb.min.y)/p.restScale;
+    p.g.children[0].position.y+= -bb.min.y/p.restScale;                   /* apoyar en y=0 */
+    p.sweep=2*Math.max(Math.hypot(bb.min.x,bb.min.z),Math.hypot(bb.min.x,bb.max.z),
+                       Math.hypot(bb.max.x,bb.min.z),Math.hypot(bb.max.x,bb.max.z));
+    p.g.rotation.y=p.phase; });
+  const widths=anaPieces.map(p=>p.sweep); const gap=1.0;
+  const total=widths.reduce((a,b)=>a+b,0)+gap*(anaPieces.length-1); let x=-total/2;
+  anaPieces.forEach((p,i)=>{ p.off=x+widths[i]/2; x+=widths[i]+gap; });   /* offset sobre el eje horizontal de la camara */
+})();
+/* interacción: tocar una pieza = ampliar; arrastrar = rotar; tocar fuera = volver */
+(()=>{
+  const hit=document.getElementById('anaHit'); if(!hit)return;
+  const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+  const pick=(cx,cy)=>{ ndc.set((cx/VW())*2-1,-(cy/VH())*2+1); ray.setFromCamera(ndc,camera);
+    const meshes=[]; anaPieces.forEach((p,i)=>p.g.traverse(n=>{if(n.isMesh||n.isLineSegments){n.userData.ana=i;meshes.push(n);}}));
+    const h=ray.intersectObjects(meshes,false)[0]; return h?h.object.userData.ana:-1; };
+  let down=null;
+  hit.addEventListener('pointerdown',e=>{ if(current!==5)return; down={x:e.clientX,y:e.clientY,t:Date.now()};
+    if(anaSel>=0&&st.anaZoom>0.5){ anaDrag.on=true; anaDrag.x=e.clientX; anaDrag.y=e.clientY; hit.setPointerCapture(e.pointerId);} });
+  hit.addEventListener('pointermove',e=>{ if(!anaDrag.on)return; const p=anaPieces[anaSel];
+    p.g.rotation.y+=(e.clientX-anaDrag.x)*0.008; anaDrag.x=e.clientX; anaDrag.y=e.clientY; });
+  hit.addEventListener('pointerup',e=>{ const wasDrag=anaDrag.on; anaDrag.on=false;
+    if(!down)return; const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null;
+    if(wasDrag&&moved>6)return;                                          /* fue un arrastre, no un toque */
+    const i=pick(e.clientX,e.clientY);
+    if(anaSel<0){ if(i>=0){ anaSel=i; gsap.to(st,{anaZoom:1,duration:1.0,ease:'power2.inOut'}); } }
+    else { gsap.to(st,{anaZoom:0,duration:0.8,ease:'power2.inOut',onComplete:()=>{anaSel=-1;}}); }
+  });
+})();
+
+let montTl=null;
+function montStart(instant){
+  if(montTl){montTl.kill();montTl=null;}
+  if(instant){st.montaje=5;return;}
+  st.montaje=0;
+  montTl=gsap.timeline({delay:0.9});
+  for(let i=1;i<=5;i++) montTl.to(st,{montaje:i,duration:1.35,ease:'power1.inOut'},i===1?undefined:'+=0.3');
+}
+
+const cam={x:-49,y:2.6,z:11,tx:-60,ty:1.6,tz:0};
+const st={heroDraw:0,factoryDraw:0,routeDraw:0,markerDraw:0,truckDraw:0,travel:0,assemble:0,skinExplode:0,replicaScale:0,fill:0,abDraw:0,moduleBorn:0,globe:0,gZoom:0,frameDraw:0,galponIn:0,modExplode:0,montaje:0,anaIn:0,anaZoom:0,plantaIn:0,indus:0,planoIn:0,corteOpen:0};
+const SLIDES=[
+  {name:'PORTADA',cam:{x:-49,y:2.6,z:11,tx:-60,ty:1.6,tz:0},st:{heroDraw:0}},
+  {name:'EL PROBLEMA',cam:{x:-8,y:22,z:42,tx:8,ty:0,tz:0},st:{abDraw:1}},
+  {name:'NACE EL MÓDULO',cam:{x:-22,y:5,z:38,tx:0,ty:2,tz:18},st:{abDraw:1,moduleBorn:1,galponIn:1}},
+  {name:'SISTEMAS MMC',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},   /* lámina de decisión (sin 3D) */
+  {name:'EL MÓDULO',cam:{x:56.7,y:44.2,z:126.7,tx:0,ty:1.75,tz:70},fov:4.5,st:{modExplode:0}},  /* proyección paralela (axo técnica) */
+  {name:'ANATOMÍA DE LAS PARTES',cam:{x:207,y:156,z:408,tx:3.0,ty:1.4,tz:200},fov:4.5,st:{anaIn:1}},  /* 3 IFC a escala real, axo paralela */
+  {name:'EL MONTAJE',cam:{x:126,y:98,z:126,tx:0,ty:0.3,tz:0},fov:4.5,st:{}},  /* secuencia 4D en axo paralela, corrida a la izq. del panel */
+  {name:'VIDA INTERIOR',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{plantaIn:1}},  /* planta MINSAL ⇄ módulo */
+  {name:'PLANO GENERAL',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{planoIn:1}},   /* planta general + corte desplegable */
+  {name:'LA PIEL',cam:{x:7,y:2.6,z:16,tx:0,ty:1.6,tz:5},st:{skinExplode:1}},
+  {name:'DETALLES CONSTRUCTIVOS',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},   /* escantillón (lámina estática) */
+  {name:'IMAGEN 01',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},                /* render exterior (placeholder) */
+  {name:'IMAGEN 02',cam:{x:0.01,y:44,z:0.01,tx:0,ty:0,tz:0},st:{}},                /* render interior (placeholder) */
+  {name:'CIERRE',cam:{x:-14,y:5,z:38,tx:0,ty:2.2,tz:0},st:{fill:1}},
+];
+const N=SLIDES.length;
+const CALLOUTS=[
+  {id:'ptA',slide:1,when:()=>st.frameDraw>0.9,pos:()=>new THREE.Vector3(6,1.2,17.6)},
+  {id:'ptB',slide:1,when:()=>st.frameDraw>0.9,pos:()=>new THREE.Vector3(26,1.2,-1.6)},
+  {id:'ruta',slide:1,when:()=>st.frameDraw>0.9,pos:()=>new THREE.Vector3(16,1.6,2)},
+  {id:'acceso',slide:1,when:()=>st.frameDraw>0.9,pos:()=>new THREE.Vector3(22,1,-3)},
+  {id:'modulo',slide:2,pos:()=>new THREE.Vector3(-60,4.2,1.6)},
+  {id:'metalcon',slide:2,pos:()=>new THREE.Vector3(-56,1,2)},
+  {id:'specmod',slide:2,when:()=>st.moduleBorn>0.8,pos:()=>truckRig.localToWorld(new THREE.Vector3(-3.4,8.8,0))},
+  {id:'spech',slide:2,when:()=>st.moduleBorn>0.8,pos:()=>truckRig.localToWorld(new THREE.Vector3(-8.4,5.8,0))},
+  {id:'speceje',slide:2,when:()=>st.moduleBorn>0.8,pos:()=>truckRig.localToWorld(new THREE.Vector3(-7.8,0.2,1.95))},
+  {id:'montaje',slide:6,when:()=>st.montaje>4.6,px:-160,pos:()=>new THREE.Vector3(2.6,6.1,-2.6)},
+  {id:'muro',slide:9,pos:()=>new THREE.Vector3(-3.5,3.2,6)},
+  {id:'ach',slide:9,pos:()=>new THREE.Vector3(3.5,0.8,7)},
+  {id:'junta',slide:9,pos:()=>new THREE.Vector3(0,2,8.5)},
+];
+/* anatomia: 3 rotulos en reposo (bajo cada pieza) + familias al ampliar (anclados al centro de la familia) */
+for(let i=0;i<3;i++){
+  CALLOUTS.push({id:'ana'+i,slide:5,when:()=>st.anaIn>0.9&&(anaSel<0?true:anaSel===i)&&st.anaZoom<0.5,
+    fixed:()=>[anaPieces[i].scrX!==undefined?anaPieces[i].scrX:VW()*0.5, VH()*0.80]});   /* leyenda alineada bajo su pieza */
+}
+['viga','diagonal','nudo','subestructura','danpal','perfil','pilote','tubular'].forEach((fam,j)=>{
+  CALLOUTS.push({id:'anaF_'+fam,slide:5,when:()=>st.anaZoom>0.9&&anaSel>=0&&!!anaPieces[anaSel].fam[fam],
+    px:(j%2?230:-500),
+    pos:()=>{const p=anaPieces[anaSel]; const hz=p.h*p.zoomScale, y0=p.g.position.y;
+      const yy=y0+hz*(0.88-0.36*Math.floor(j/2));                        /* 3 niveles a lo alto de la pieza */
+      return new THREE.Vector3(0, yy, ANA_Z);}});                         /* la pieza ampliada esta en x=0 */
+});
+/* etiquetas del explode (alternadas izq/der, fijas al mundo — no giran con el módulo) */
+for(let i=0;i<7;i++){
+  CALLOUTS.push({id:'lay'+(i+1),slide:4,when:()=>st.modExplode>0.85,px:(i%2?185:-395),   /* columnas limpias izq/der */
+    pos:()=>{const l=modLayers[i];return new THREE.Vector3(MC.x, l.baseY+l.dy*st.modExplode, MC.z);}});
+}
+const calloutEls={}; document.querySelectorAll('#track ~ .callout, .callout').forEach(e=>calloutEls[e.dataset.id]=e);
+
+/* ================= NAVEGACIÓN ================= */
+let current=-1,animating=false;
+const track=document.getElementById('track');
+const curEl=document.getElementById('cur'),chEl=document.getElementById('chname');
+const ghost=document.getElementById('ghost'),dots=document.getElementById('dots');
+const hud=document.getElementById('hud'),vignette=document.getElementById('vignette');
+SLIDES.forEach((s,i)=>{const d=document.createElement('i');d.addEventListener('click',()=>goTo(i));dots.appendChild(d);});
+
+/* --- secuencia spur de la slide 2 (globo → descenso → recuadros → galpón) --- */
+let introTl=null;
+function playIntro(){
+  if(introTl)introTl.kill();
+  gsap.killTweensOf(cam); gsap.killTweensOf(st);
+  Object.keys(st).forEach(k=>st[k]=0);                              /* pizarra limpia al entrar */
+  gAlign=false; camera.fov=42; camera.updateProjectionMatrix();
+  gsap.set(cam,{x:GC.x,y:GC.y,z:GC.z+44,tx:GC.x,ty:GC.y,tz:GC.z});
+  introTl=gsap.timeline();
+  introTl.to(st,{globe:1,duration:0.5,ease:'none'})
+    .to({},{duration:1.1})                                          /* la Tierra gira libre */
+    .call(()=>{gAlign=true;})                                       /* rota hasta poner Chile al frente */
+    .to({},{duration:1.15})
+    .addLabel('zoom')                                               /* zoom anclado al marcador de Chile */
+    .to(st,{gZoom:1,duration:1.35,ease:'power2.in'},'zoom')
+    .to(st,{globe:0,duration:0.75,ease:'none'},'zoom+=0.6')
+    .to(cam,{x:-8,y:22,z:42,tx:8,ty:0,tz:0,duration:1.8,ease:'power2.inOut'},'zoom+=0.45')
+    .to(st,{abDraw:1,duration:0.9,ease:'none'},'zoom+=0.85')
+    .to(st,{frameDraw:1,duration:0.7,ease:'none'},'>-0.1')
+    .to(st,{galponIn:1,duration:0.8,ease:'none'},'+=0.15');
+}
+function introSkip(){ st.globe=0; st.gZoom=1; st.abDraw=1; st.frameDraw=1; st.galponIn=1; gAlign=false;
+  camera.fov=42; camera.updateProjectionMatrix();
+  gsap.set(cam,{x:-8,y:22,z:42,tx:8,ty:0,tz:0}); }
+
+function goTo(i,instant){
+  i=Math.max(0,Math.min(N-1,i));
+  if(i===current||(animating&&!instant))return;
+  animating=true; current=i;
+  if(introTl&&i!==1){introTl.kill();introTl=null;gAlign=false;}
+  if(montTl&&i!==6){montTl.kill();montTl=null;}
+  const s=SLIDES[i]; const dur=instant?0:1.2;
+  gsap.to(track,{x:-i*VW(),duration:instant?0:0.9,ease:'power2.inOut'});
+  if(i===1){
+    if(instant){introSkip();} else {playIntro();}
+    animating=false;
+  } else {
+    const ST0=Object.fromEntries(Object.keys(st).map(k=>[k,0]));   /* apagar TODO lo que no usa esta slide */
+    const stT={...ST0,...s.st}; if(i===6&&instant)stT.montaje=5;
+    gsap.to(cam,{...s.cam,duration:dur,ease:'power2.inOut'});
+    gsap.to(camera,{fov:s.fov||42,duration:dur,ease:'power2.inOut',onUpdate:()=>camera.updateProjectionMatrix()});
+    gsap.to(st,{...stT,duration:dur*0.9,ease:'power1.inOut',delay:instant?0:0.15,onComplete:()=>{animating=false;}});
+    if(i===6)montStart(instant);
+    if(i!==5){anaSel=-1;st.anaZoom=0;}                                   /* secuencia 4D del montaje */
+  }
+  if(instant)animating=false;
+  curEl.textContent=String(i+1).padStart(2,'0');
+  chEl.textContent=s.name;
+  ghost.textContent=String(i+1).padStart(2,'0');
+  [...dots.children].forEach((d,k)=>d.classList.toggle('on',k===i));
+  if(i===4){const b=document.getElementById('btnExplode'); if(b)b.textContent='▲ EXPLOTAR MÓDULO';}
+  if(i===7){const b=document.getElementById('btnIndus'); if(b)b.textContent='⇄ INDUSTRIALIZACIÓN DEL MÓDULO';}
+  if(i===8){const b=document.getElementById('btnCorte'); if(b)b.textContent="▼ DESPLEGAR CORTE A–A'";}
+  document.getElementById('hint').style.opacity=i===0?1:0;
+  calloutFade=0;
+  const cob=COBALT_SLIDES.includes(i);
+  hud.style.color=cob?'#ffffff':'var(--wire)';
+  vignette.style.opacity=cob?0:1;
+  ghost.style.opacity=cob?0:1;
+}
+document.getElementById('next').addEventListener('click',()=>goTo(current+1));
+document.getElementById('prev').addEventListener('click',()=>goTo(current-1));
+addEventListener('keydown',e=>{
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();goTo(current+1);}
+  if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();goTo(current-1);}
+  if(e.key==='Home')goTo(0); if(e.key==='End')goTo(N-1);
+  if((e.key==='e'||e.key==='E')&&current===0) toggleEdit();          /* modo edición portada */
+});
+function toggleEdit(){ document.getElementById('asciiCtl').classList.toggle('open'); }
+document.getElementById('editBtn').addEventListener('click',toggleEdit);
+/* ===== TIERRA 2D ROTANDO · esfera por software + DITHERING BAYER por frame (estilo designrigs) ===== */
+const BAYER8=[[0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],[12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],
+              [3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],[15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]];
+const earthImg=new Image(); let earthReady=false, ditherRes=300, gRot=0;   /* resolución fija: máxima */
+let gAlign=false, gMarkPos={l:52,t:70,vis:false};                           /* alineación de Chile + ancla del zoom */
+let mapW=1024,mapH=512,mapData=null,cells=null,cellIdx=null,cellN=0,earthID=null;
+const eCv=document.getElementById('earthCv');
+function buildMap(){
+  const c=document.createElement('canvas'); c.width=mapW; c.height=mapH;
+  const x=c.getContext('2d'); x.drawImage(earthImg,0,0,mapW,mapH);
+  const id=x.getImageData(0,0,mapW,mapH).data;
+  mapData=new Uint8Array(mapW*mapH);
+  for(let i=0;i<mapW*mapH;i++) mapData[i]=id[i*4];
+}
+function precompute(){                        /* por celda: lon0, fila del mapa, luz día (mult.) y halo (adit.) */
+  const R=ditherRes;
+  cells=new Float32Array(R*R*4); cellIdx=new Int32Array(R*R); cellN=0;
+  let L=[0.35,-0.15,0.92]; const n=Math.hypot(L[0],L[1],L[2]); L=L.map(v=>v/n);
+  for(let y=0;y<R;y++)for(let x=0;x<R;x++){
+    const i=y*R+x;
+    const nx=(x+0.5)/R*2-1, ny=(y+0.5)/R*2-1, r2=nx*nx+ny*ny;
+    if(r2>1){ cellIdx[i]=-1; continue; }
+    const nz=Math.sqrt(1-r2), py=-ny;
+    const lat=Math.asin(py), lon0=Math.atan2(nx,nz);
+    const vRow=Math.min(mapH-1,Math.max(0,Math.round((0.5-lat/Math.PI)*mapH)));
+    const diff=Math.max(0, nx*L[0]+py*L[1]+nz*L[2]);
+    const r=Math.sqrt(r2), rim=r>0.955?(r-0.955)/0.045:0;
+    cellIdx[i]=cellN;
+    cells[cellN*4]=lon0; cells[cellN*4+1]=vRow;
+    cells[cellN*4+2]=0.05+1.05*Math.pow(diff,1.5);                  /* los continentes se leen en la zona iluminada */
+    cells[cellN*4+3]=rim*(0.22+0.78*diff);
+    cellN++;
+  }
+}
+function renderGlobe(){
+  if(!mapData||!cells) return;
+  const R=ditherRes;
+  if(!earthID||eCv.width!==R){ eCv.width=R; eCv.height=R; earthID=eCv.getContext('2d').createImageData(R,R); }
+  const px=earthID.data; px.fill(0);
+  const TAU=Math.PI*2;
+  for(let i=0;i<R*R;i++){
+    const ci=cellIdx[i]; if(ci<0) continue;
+    let u=(cells[ci*4]+gRot)/TAU+0.5; u-=Math.floor(u);
+    let v=mapData[cells[ci*4+1]*mapW+((u*mapW)|0)]/255;
+    v=Math.min(1, v*cells[ci*4+2]+cells[ci*4+3]);                   /* mapa día × creciente + atmósfera */
+    const t=(BAYER8[(i/R|0)&7][(i%R)&7]+0.5)/64;
+    if(v>t){ const o=i*4; px[o]=255;px[o+1]=255;px[o+2]=255;px[o+3]=255; }
+  }
+  eCv.getContext('2d').putImageData(earthID,0,0);
+  /* marcador: sur de Chile (lat -41,1 · lon -73) sigue la rotación */
+  const mk=document.getElementById('globeMark');
+  if(mk){
+    const lat=-41.1*Math.PI/180, lam=-73*Math.PI/180;
+    let lon0=lam-gRot; lon0=Math.atan2(Math.sin(lon0),Math.cos(lon0));
+    if(Math.abs(lon0)<Math.PI/2*0.96){
+      const nx=Math.cos(lat)*Math.sin(lon0), py=Math.sin(lat);
+      mk.style.display='block';
+      gMarkPos={l:(nx+1)/2*100, t:(1-py)/2*100, vis:true};          /* ancla para el zoom a Chile */
+      mk.style.left=gMarkPos.l+'%'; mk.style.top=gMarkPos.t+'%';
+    } else { mk.style.display='none'; gMarkPos.vis=false; }
+  }
+}
+earthImg.onload=()=>{earthReady=true; buildMap(); precompute(); renderGlobe();};
+earthImg.src='data:image/jpeg;base64,'+EARTHMAP_B64;
+
+/* explode del módulo (slide 05) */
+const btnEx=document.getElementById('btnExplode');
+const CAM_MOD_CLOSE={x:56.7,y:44.2,z:126.7,tx:0,ty:1.75,tz:70};    /* primer plano (armado) · proyección paralela */
+const CAM_MOD_WIDE={x:196.9,y:153.6,z:266.9,tx:0,ty:9.6,tz:70};    /* vista amplia (explotado) · misma dirección axo */
+btnEx.addEventListener('click',()=>{
+  const open=st.modExplode>0.5;
+  gsap.to(st,{modExplode:open?0:1,duration:1.15,ease:'power2.inOut'});
+  gsap.to(cam,{...(open?CAM_MOD_CLOSE:CAM_MOD_WIDE),duration:1.15,ease:'power2.inOut'});
+  btnEx.textContent=open?'▲ EXPLOTAR MÓDULO':'▼ ARMAR MÓDULO';
+});
+document.getElementById('btnMont').addEventListener('click',()=>{ if(current===6)montStart(false); });
+document.getElementById('btnIndus').addEventListener('click',()=>{ if(current!==7)return;
+  const open=st.indus>0.5;
+  gsap.to(st,{indus:open?0:1,duration:1.4,ease:'power2.inOut'});
+  document.getElementById('btnIndus').textContent=open?'⇄ INDUSTRIALIZACIÓN DEL MÓDULO':'⇄ VOLVER A PLANTA TIPO';
+});
+document.getElementById('btnCorte').addEventListener('click',()=>{ if(current!==8)return;
+  const open=st.corteOpen>0.5;
+  gsap.to(st,{corteOpen:open?0:1,duration:1.1,ease:'power2.inOut'});
+  document.getElementById('btnCorte').textContent=open?"▼ DESPLEGAR CORTE A–A'":"▲ CERRAR CORTE";
+});
+let wheelLock=0;
+addEventListener('wheel',e=>{
+  const p=e.target.closest&&e.target.closest('#s8 .panel');
+  if(p&&p.scrollHeight>p.clientHeight)return;
+  if(e.target.closest&&e.target.closest('#introViewer'))return;
+  const now=Date.now(); if(now-wheelLock<900)return;
+  if(Math.abs(e.deltaY)<12&&Math.abs(e.deltaX)<12)return;
+  wheelLock=now; const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+  goTo(current+(d>0?1:-1));
+},{passive:true});
+let tx0=null,ty0=null;
+addEventListener('touchstart',e=>{if(e.target.closest&&e.target.closest('#introViewer')){tx0=null;return;}tx0=e.touches[0].clientX;ty0=e.touches[0].clientY;},{passive:true});
+addEventListener('touchend',e=>{if(tx0===null)return;const dx=e.changedTouches[0].clientX-tx0,dy=e.changedTouches[0].clientY-ty0;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy))goTo(current+(dx<0?1:-1));tx0=null;},{passive:true});
+addEventListener('resize',()=>{gsap.set(track,{x:-current*VW()});resize();});
+addEventListener('orientationchange',()=>{setTimeout(()=>{gsap.set(track,{x:-current*VW()});resize();},120);});
+
+/* ================= RENDER LOOP ================= */
+let calloutFade=0;
+const camT=new THREE.Vector3(),v=new THREE.Vector3();
+function tick(){
+  if(canvas.width!==Math.floor(VW()*renderer.getPixelRatio())||canvas.height!==Math.floor(VH()*renderer.getPixelRatio())){resize();}
+  camera.position.set(cam.x,cam.y,cam.z); camT.set(cam.tx,cam.ty,cam.tz); camera.lookAt(camT);
+  setDraw(hero,st.heroDraw);
+  setDraw(factory,st.factoryDraw); factory.visible=st.factoryDraw>0.01;
+  route.geometry.setDrawRange(0,Math.floor(route.userData.total*st.routeDraw)); route.visible=st.routeDraw>0.01;
+  setDraw(marker,st.markerDraw); marker.visible=st.markerDraw>0.01;
+  setDraw(truck,st.truckDraw); truck.visible=st.truckDraw>0.01&&st.assemble<=0.01;
+  if(st.travel>0){const k=Math.min(st.travel,1);const pt=routeCurve.getPoint(k);truck.position.set(pt.x,0,pt.z);const ah=routeCurve.getPoint(Math.min(k+0.01,1));truck.lookAt(ah.x,0,ah.z);truck.rotateY(-Math.PI/2);hero.position.set(pt.x+1.5,1.05+MOD_H/2,pt.z);hero.rotation.copy(truck.rotation);}
+  else if(st.travel===0&&st.assemble<=0.01){hero.position.copy(FACTORY);hero.rotation.set(0,0,0);}
+  if(st.assemble>0.01){hero.visible=false;posta.visible=true;postaMods.forEach((m,i)=>{const delay=i/postaMods.length*0.5;const k=THREE.MathUtils.clamp((st.assemble-delay)/(1-delay||1),0,1);const e=1-Math.pow(1-k,3);m.position.lerpVectors(new THREE.Vector3(m.userData.target.x,m.userData.target.y+40+i*6,m.userData.target.z),m.userData.target,e);setDraw(m,Math.max(k,0.25));});}
+  else{posta.visible=false;hero.visible=st.heroDraw>0.01;}
+  skin.visible=st.skinExplode>0.01;
+  skinPlanes.forEach((pl,i)=>{pl.position.z=MOD_W*1.5+0.01+st.skinExplode*(i+1)*1.15;setDraw(pl,1);});
+  replicas.visible=st.replicaScale>0.01; replicas.scale.setScalar(Math.max(st.replicaScale,0.001)); setDraw(replicas,st.replicaScale);
+  fillMat.opacity=st.fill*0.10;
+  prob.visible=current===1||current===2;
+  if(prob.visible){
+    prob.traverse(n=>{if((n.isLine||n.isLineSegments)&&n.material){n.material.transparent=true;n.material.opacity=st.abDraw;}});
+    const pulse=1+0.18*Math.sin(performance.now()*0.004);
+    ringA.scale.set(pulse,pulse,pulse); pinA.quaternion.copy(camera.quaternion);
+    const mapOnly=current===1;                                    /* terreno/ruta/pin B sólo en slide 02 */
+    terr.visible=mapOnly; pinB.visible=mapOnly; ringB.visible=mapOnly;
+    frameA.visible=mapOnly; frameB.visible=mapOnly;
+    for(const s of segs) s.visible=mapOnly;
+    setDraw(frameA,st.frameDraw); setDraw(frameB,st.frameDraw);   /* recuadros se dibujan tras el descenso */
+    setDraw(planta,st.galponIn);                                   /* la planta aparece al final */
+    plantaOcc.visible=st.galponIn>0.85;                            /* sólida al terminar el dibujado */
+    if(mapOnly){ ringB.scale.set(pulse,pulse,pulse); pinB.quaternion.copy(camera.quaternion); planta.rotation.y+=0.004; }
+  }
+  /* fase globo (slide 2): Tierra 2D ditherizada (el globo 3D queda desactivado) */
+  globeGrp.visible=false;
+  const g2=document.getElementById('globe2d');
+  if(g2){
+    const on=current===1&&st.globe>0.004;
+    g2.style.opacity=on?st.globe:0;
+    g2.style.transform='translate(-50%,-50%)';
+    g2.style.pointerEvents='none';
+    const ez=document.getElementById('eZoom');
+    if(ez){ if(st.gZoom>0.001&&gMarkPos.vis) ez.style.transformOrigin=gMarkPos.l+'% '+gMarkPos.t+'%';
+      ez.style.transform=`scale(${1+st.gZoom*2.6})`; }              /* el zoom ocurre justo sobre Chile */
+    if(on&&earthReady){
+      if(gAlign){ const t=-73*Math.PI/180;                           /* Chile al frente antes de bajar */
+        const d=Math.atan2(Math.sin(t-gRot),Math.cos(t-gRot)); gRot+=d*0.075; }
+      else gRot+=0.0030;                                            /* rotación libre de la esfera */
+      renderGlobe();
+    }
+  }
+  const gTag=document.getElementById('globeTag');
+  if(gTag) gTag.style.opacity=(current===1?st.globe:0);
+  const dith=document.getElementById('dither');
+  if(dith) dith.style.opacity=current===1?(0.16+0.5*st.globe):0;   /* dither fuerte en globo, sutil tras el descenso */
+  /* módulo axonométrico (slide 4) y montaje (slide 5): cámara lejana + fov chico = paralela, sin niebla */
+  grid.visible=[1,2,6,9].includes(current);                        /* grilla solo en escenas 3D de terreno */
+  if(current===4||current===5||current===6){ scene.fog.near=900; scene.fog.far=1800; } else { scene.fog.near=95; scene.fog.far=270; }
+  modExp.visible=current===4;
+  if(modExp.visible){ modExp.rotation.y+=0.004;
+    modLayers.forEach(l=>{ l.grp.position.y=l.baseY + l.dy*st.modExplode; });
+  }
+  /* anatomia de las partes (slide 06): 3 piezas a escala real, rotacion lenta, zoom al tocar */
+  anaGrp.visible=current===5&&st.anaIn>0.01;
+  if(anaGrp.visible){
+    const z=st.anaZoom, sel=anaSel;
+    const rightV=new THREE.Vector3().subVectors(camT,camera.position).cross(camera.up).normalize();
+    const hubX=camT.x-rightV.x*ANA_SHIFT, hubZ=camT.z-rightV.z*ANA_SHIFT;   /* centro de la fila */
+    anaPieces.forEach((p,i)=>{
+      const isSel=sel===i, k=isSel?z:0;
+      if(!anaDrag.on||!isSel) p.g.rotation.y+=p.spin;                    /* cada pieza con su velocidad */
+      p.g.visible=true;
+      const fade=(sel>=0&&!isSel)?1-z*0.86:1;                            /* las otras se atenuan */
+      p.mats.forEach(m=>{m.opacity=m.userData.o0*fade;});
+      const off=p.off*(1-k);                                             /* la elegida viaja al centro */
+      p.g.position.set(hubX+rightV.x*off, -k*(p.h*p.zoomScale*0.5+0.4), hubZ+rightV.z*off);
+      p.g.scale.setScalar(p.restScale+(p.zoomScale-p.restScale)*k);
+      p.scrX=(new THREE.Vector3(p.g.position.x,p.h*p.restScale*0.5,p.g.position.z).project(camera).x*0.5+0.5)*VW();
+    });
+    const hit=document.getElementById('anaHit');
+    if(hit){ hit.classList.add('on'); hit.classList.toggle('grab',sel>=0&&z>0.5&&!anaDrag.on); hit.classList.toggle('grabbing',anaDrag.on); }
+  } else { const hit=document.getElementById('anaHit'); if(hit){hit.classList.remove('on','grab','grabbing');} }
+  /* montaje 4D (slide 5): cada fase entra en ámbar y asienta a crema */
+  const montOn=current===6;
+  montG.forEach((m,i)=>{
+    const k=THREE.MathUtils.clamp(st.montaje-i,0,1);
+    m.g.visible=montOn&&k>0.002;
+    if(!m.g.visible)return;
+    setDraw(m.g,Math.max(k,0.12));
+    const t=Math.pow(k,3);
+    m.mats.forEach(e=>{e.mt.color.copy(C_ACC).lerp(e.c0,t);});
+    if(i===0){m.g.position.y=m.baseY+(1-k)*1.6; m.g.rotation.y=(1-k)*9;}   /* pilotes se hincan girando */
+    if(i===1)m.g.position.x=m.baseX-(1-k)*5.5;                     /* vigas entran deslizando */
+    if(i===2)m.g.position.y=m.baseY+(1-k)*1.1;                     /* suelo ventilado baja a su posición */
+    if(i===3)m.g.position.y=m.baseY+(1-k)*5.5;                     /* módulo desciende (grúa) */
+    if(i===4)m.g.position.z=m.baseZ+(1-k)*3.2;                     /* piel llega de frente */
+  });
+  const mh=document.getElementById('montHud');
+  if(mh){ const onH=montOn&&st.montaje>0.02&&!animating;
+    mh.style.opacity=onH?1:0;
+    if(onH){ const idx=Math.min(4,Math.floor(st.montaje));
+      if(mh.dataset.ph!==String(idx)){ mh.dataset.ph=String(idx);
+        mh.querySelector('u').textContent='FASE 0'+(idx+1)+' · 05';
+        mh.querySelector('b').textContent=MONT_N[idx];
+        mh.querySelector('small').textContent=MONT_S[idx]; }
+      const done=st.montaje>=4.98;                                 /* al completar, todo asienta a crema */
+      [...mh.querySelectorAll('.msegs i')].forEach((el,i2)=>{
+        el.style.background=(i2<idx||done)?'rgba(232,230,224,.85)':(i2===idx?'#ff8a2b':'rgba(232,230,224,.25)');});
+    }
+  }
+  /* planta CAD (slide 06): lámina con barrido plóter + transición A⇄B "industrialización del módulo" */
+  const pw=document.getElementById('plantaWrap');
+  if(pw){ const p=current===7?st.plantaIn:0;
+    pw.style.opacity=p>0.02?1:0;
+    pw.style.clipPath=`inset(-2% ${(1-Math.min(p,1))*100}% -2% -2%)`;
+    const q=st.indus, pb=document.getElementById('plantaB');
+    if(pb){ pb.style.opacity=q>0.001?1:0; pb.style.clipPath=`inset(-2% ${(1-q)*100}% -2% -2%)`; }
+    const it=document.getElementById('indusTag');
+    if(it) it.style.opacity=current===7?Math.sin(THREE.MathUtils.clamp(q,0,1)*Math.PI):0;
+    const cap=pw.querySelector('.pcap');
+    if(cap){ const B=q>0.5?'b':'a';
+      if(cap.dataset.mode!==B){ cap.dataset.mode=B;
+        cap.querySelector('u').textContent=B==='b'?'PLANTA · MÓDULO 3,5 × 8,0':'PLANTA · BOX DE CONSULTA';
+        cap.querySelector('b').textContent=B==='b'?'Programa MINSAL industrializado':'Equipamiento según fichas MINSAL';
+        cap.querySelector('small').textContent=B==='b'?'DXF del módulo en preparación — mismo pipeline de grosores':'Códigos M · E · T — dibujo Revit → AutoCAD, grosores de ploteo conservados';
+        const psc=pw.querySelector('.pscale'); if(psc)psc.style.visibility=B==='b'?'hidden':'visible';  /* barra solo con DXF real */
+      } }
+  }
+  /* plano general (slide 07): planta + corte desplegable A–A' */
+  const pg=document.getElementById('planoWrap');
+  if(pg){ const p2=current===8?st.planoIn:0;
+    pg.style.opacity=p2>0.02?1:0;
+    pg.style.clipPath=`inset(-2% ${(1-Math.min(p2,1))*100}% -2% -2%)`;
+    const q2=st.corteOpen, cb=document.getElementById('corteBox');
+    if(cb){ cb.style.opacity=q2>0.01?1:0;
+      cb.style.clipPath=`inset(0 0 ${(1-q2)*100}% 0)`;                 /* se despliega hacia abajo */
+      const ch=cb.offsetHeight||0;
+      pg.style.transform=`translateY(calc(-50% + ${Math.round((1-q2)*ch/2)}px))`;
+    }
+  }
+  truckRig.visible=current===2;                                    /* camión cargado en la planta (opaco) */
+  calloutFade=Math.min(calloutFade+0.03,1);
+  CALLOUTS.forEach(c=>{const el=calloutEls[c.id];if(!el||el.closest('#track'))return;if(c.slide!==current||animating||(c.when&&!c.when())){el.style.opacity=0;return;}if(c.fixed){const f=c.fixed();el.style.left=f[0]+'px';el.style.top=f[1]+'px';el.style.opacity=calloutFade;return;}v.copy(c.pos()).project(camera);if(v.z>1){el.style.opacity=0;return;}el.style.left=((v.x*0.5+0.5)*VW()+(c.px||0))+'px';el.style.top=((-v.y*0.5+0.5)*VH())+'px';el.style.opacity=calloutFade;});
+  if(!COBALT_SLIDES.includes(current))renderer.render(scene,camera);
+  requestAnimationFrame(tick);
+}
+document.getElementById('plantaSvg').innerHTML=PLANTA_SVG;         /* inyecta la planta CAD horneada */
+(()=>{ /* escala gráfica exacta: 2 m medidos contra el ancho real del plano */
+  const c=document.querySelector('#plantaWrap .pcap');
+  const d=document.createElement('div'); d.className='pscale';
+  d.innerHTML='<u>ESCALA GRÁFICA</u><div class="bar"><i></i><i></i></div><div class="nums"><span>0</span><span>1</span><span>2 m</span></div>';
+  d.style.width=(2/PLANTA_W_M*100)+'%'; c.appendChild(d);
+})();
+/* ===== placeholders DXF pendientes (se reemplazan con bake_planta.py al llegar los archivos) ===== */
+const PLANTA_B_PH=`<svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
+ <g stroke="#e8e6e0" fill="none">
+  <rect x="18" y="18" width="764" height="314" stroke-width="3" stroke-dasharray="14 8"/>
+  <line x1="285" y1="18" x2="285" y2="332" stroke-width="1" stroke-dasharray="6 8"/>
+  <line x1="545" y1="18" x2="545" y2="332" stroke-width="1" stroke-dasharray="6 8"/>
+  <rect x="50" y="230" width="180" height="70" stroke-width="1" stroke-dasharray="4 6" opacity="0.6"/>
+  <rect x="600" y="50" width="140" height="90" stroke-width="1" stroke-dasharray="4 6" opacity="0.6"/>
+ </g>
+ <text x="400" y="182" font-size="24" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="6">MÓDULO 3,5 × 8,0 — DXF EN PREPARACIÓN</text>
+</svg>`;
+const PLANO_PH=`<svg viewBox="0 -85 2400 1255" xmlns="http://www.w3.org/2000/svg">
+ <g stroke="#e8e6e0" fill="none">
+  <rect x="30" y="30" width="2340" height="990" stroke-width="4"/>
+  <line x1="420" y1="30" x2="420" y2="1020" stroke-width="1" stroke-dasharray="8 10"/>
+  <line x1="810" y1="30" x2="810" y2="1020" stroke-width="1" stroke-dasharray="8 10"/>
+  <line x1="1590" y1="30" x2="1590" y2="1020" stroke-width="1" stroke-dasharray="8 10"/>
+  <line x1="1980" y1="30" x2="1980" y2="1020" stroke-width="1" stroke-dasharray="8 10"/>
+  <line x1="30" y1="525" x2="2370" y2="525" stroke-width="1" stroke-dasharray="8 10"/>
+  <line x1="1230" y1="-30" x2="1230" y2="1080" stroke-width="3" stroke-dasharray="30 10 8 10"/>
+ </g>
+ <g fill="#ff8a2b"><path d="M1230 -30 l-16 -26 h32 Z"/><path d="M1230 1080 l-16 26 h32 Z"/></g>
+ <text x="1268" y="-42" font-size="34" fill="#ff8a2b" font-family="Consolas,monospace">A</text>
+ <text x="1268" y="1122" font-size="34" fill="#ff8a2b" font-family="Consolas,monospace">A'</text>
+ <text x="1200" y="540" font-size="42" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="8">PLANTA GENERAL ≈ 200 M² — DXF EN PREPARACIÓN</text>
+</svg>`;
+const CORTE_PH=`<svg viewBox="0 0 2400 430" xmlns="http://www.w3.org/2000/svg">
+ <g stroke="#e8e6e0" fill="none">
+  <line x1="0" y1="368" x2="2400" y2="368" stroke-width="4"/>
+  <polyline points="60,368 60,150 2340,96 2340,368" stroke-width="2" stroke-dasharray="14 8"/>
+  <line x1="420" y1="368" x2="420" y2="140" stroke-width="1" stroke-dasharray="6 8"/>
+  <line x1="810" y1="368" x2="810" y2="130" stroke-width="1" stroke-dasharray="6 8"/>
+  <line x1="1590" y1="368" x2="1590" y2="112" stroke-width="1" stroke-dasharray="6 8"/>
+  <line x1="1980" y1="368" x2="1980" y2="104" stroke-width="1" stroke-dasharray="6 8"/>
+ </g>
+ <g stroke="#e8e6e0" opacity="0.5">${Array.from({length:40},(_,i)=>`<line x1="${60*i}" y1="368" x2="${60*i-22}" y2="392"/>`).join('')}</g>
+ <text x="1200" y="260" font-size="40" fill="#e8e6e0" opacity="0.55" font-family="Consolas,monospace" text-anchor="middle" letter-spacing="8">CORTE A–A' — DXF EN PREPARACIÓN</text>
+</svg>`;
+document.getElementById('plantaB').innerHTML=PLANTA_B_PH;
+document.getElementById('planoSvg').innerHTML=PLANO_PH;
+document.getElementById('corteSvg').innerHTML=CORTE_PH;
+setDraw(hero,0);setDraw(factory,0);setDraw(marker,0);setDraw(truck,0);route.geometry.setDrawRange(0,0);
+goTo(0,true);
+tick();
+
+/* ================= VISOR ASCII CONTENIDO (portada) ================= */
+(function(){
+  const host=document.getElementById('introViewer');
+  const aScene=new THREE.Scene();
+  const aCam=new THREE.PerspectiveCamera(42,1,0.1,500);
+  aCam.position.set(0,22,42); aCam.lookAt(0,-1,0);
+  const aRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); aRenderer.setPixelRatio(1); aRenderer.setClearColor(0x000000,0);
+  let charSet=' .:-=+*#%@',effect,resolution=0.45,invert=false,spinSpeed=0.0022;
+  function buildEffect(){
+    if(effect&&effect.domElement&&effect.domElement.parentNode)host.removeChild(effect.domElement);
+    effect=new THREE.AsciiEffect(aRenderer,charSet,{invert:invert,resolution:resolution});
+    effect.domElement.style.color='#ffffff';
+    effect.domElement.className='ascii';
+    host.appendChild(effect.domElement);
+    sizeAscii(); renderAscii();
+  }
+  function sizeAscii(){
+    const w=Math.max(host.clientWidth,240),h=Math.max(host.clientHeight,200);
+    aCam.aspect=w/h; aCam.updateProjectionMatrix(); if(effect)effect.setSize(w,h);
+  }
+  function renderAscii(){
+    if(!effect||aRenderer.domElement.width<1)return;
+    model.rotation.y=rotY; model.rotation.x=rotX;
+    effect.render(aScene,aCam); updateLabels();
+  }
+  /* iluminación "sol bajo": muro iluminado / techo medio / muro en sombra (rango completo) */
+  aScene.add(new THREE.AmbientLight(0xffffff,0.10));
+  const key=new THREE.DirectionalLight(0xffffff,1.35); key.position.set(28,14,8); aScene.add(key);
+  const fill=new THREE.DirectionalLight(0xffffff,0.18); fill.position.set(-20,8,-16); aScene.add(fill);
+  const model=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:0xf2f4f8,roughness:.55,metalness:.05,flatShading:true,side:THREE.DoubleSide});
+  (()=>{                                   /* malla IFC real (posta) */
+    const dv=atob(IFC_V_B64),bv=new Uint8Array(dv.length); for(let i=0;i<dv.length;i++)bv[i]=dv.charCodeAt(i);
+    const df=atob(IFC_F_B64),bf=new Uint8Array(df.length); for(let i=0;i<df.length;i++)bf[i]=df.charCodeAt(i);
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(bv.buffer),3));
+    g.setIndex(new THREE.BufferAttribute(new Uint16Array(bf.buffer),1));
+    g.computeVertexNormals();
+    const inner=new THREE.Group(); inner.rotation.x=-Math.PI/2; inner.add(new THREE.Mesh(g,mat)); /* IFC Z-up→Y-up */
+    model.add(inner);
+  })();
+  model.scale.setScalar(40); model.position.y=0; aScene.add(model);
+  const anchors={m2:new THREE.Vector3(0,3,0),mods:new THREE.Vector3(-7,1,9),term:new THREE.Vector3(7,1,-9),mont:new THREE.Vector3(9,1,3)};
+  let rotY=0.6,rotX=0.12,tY=rotY,tX=rotX,dragging=false,px=0,py=0,idle=0;
+  host.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;host.classList.add('grabbing');idle=0;document.getElementById('dragHint').style.opacity=0;host.setPointerCapture(e.pointerId);});
+  host.addEventListener('pointermove',e=>{if(!dragging)return;tY+=(e.clientX-px)*0.008;tX+=(e.clientY-py)*0.006;tX=Math.max(-0.5,Math.min(0.8,tX));px=e.clientX;py=e.clientY;idle=0;});
+  const end=()=>{dragging=false;host.classList.remove('grabbing');};
+  host.addEventListener('pointerup',end); host.addEventListener('pointercancel',end); host.addEventListener('pointerleave',end);
+  const dataWrap=document.getElementById('introData'); const labels={}; dataWrap.querySelectorAll('.lbl').forEach(l=>labels[l.dataset.id]=l);
+  let dataOn=false; const vp=new THREE.Vector3();
+  function updateLabels(){if(!dataOn)return;model.updateMatrixWorld();const w=host.clientWidth,h=host.clientHeight;for(const id in labels){vp.copy(anchors[id]).applyMatrix4(model.matrixWorld).project(aCam);const el=labels[id];if(vp.z>1){el.style.opacity=0;continue;}el.style.opacity=1;el.style.left=((vp.x*0.5+0.5)*w)+'px';el.style.top=((-vp.y*0.5+0.5)*h)+'px';}}
+  function aTick(){
+    if(current===0){
+      if(!dragging){idle++;if(idle>40)tY+=spinSpeed;}
+      rotY+=(tY-rotY)*0.09; rotX+=(tX-rotX)*0.09;
+      renderAscii();
+    }
+    requestAnimationFrame(aTick);
+  }
+  buildEffect();            /* build síncrono (no depende de rAF) */
+  renderAscii();            /* primer frame forzado */
+  requestAnimationFrame(aTick);
+  addEventListener('load',()=>{sizeAscii();renderAscii();});
+  addEventListener('resize',()=>{sizeAscii();renderAscii();});
+  document.querySelectorAll('#asciiCtl .cs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#asciiCtl .cs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');charSet=b.dataset.cs;buildEffect();}));
+  document.getElementById('btnData').addEventListener('click',function(){dataOn=!dataOn;this.classList.toggle('on',dataOn);this.setAttribute('aria-pressed',dataOn);dataWrap.classList.toggle('on',dataOn);if(!dataOn)Object.values(labels).forEach(l=>l.style.opacity=0);});
+  /* ---- controles de edición ---- */
+  const rRes=document.getElementById('rRes'),vRes=document.getElementById('vRes');
+  rRes.addEventListener('input',()=>{resolution=parseFloat(rRes.value);vRes.textContent=resolution.toFixed(2);buildEffect();});
+  const rScale=document.getElementById('rScale'),vScale=document.getElementById('vScale');
+  rScale.addEventListener('input',()=>{const s=parseFloat(rScale.value);vScale.textContent=s;model.scale.setScalar(s);});
+  const rSpin=document.getElementById('rSpin'),vSpin=document.getElementById('vSpin'); vSpin.textContent=rSpin.value;
+  rSpin.addEventListener('input',()=>{spinSpeed=parseFloat(rSpin.value)/10000;vSpin.textContent=rSpin.value;});
+  const cInv=document.getElementById('cInv');
+  cInv.addEventListener('change',()=>{invert=cInv.checked;buildEffect();});
+  document.getElementById('btnReset').addEventListener('click',()=>{
+    charSet=' .:-=+*#%@';resolution=0.45;invert=false;spinSpeed=0.0022;model.scale.setScalar(46);tY=0.6;tX=0.12;
+    rRes.value=0.45;vRes.textContent='0.45';rScale.value=46;vScale.textContent='46';rSpin.value=22;vSpin.textContent='22';cInv.checked=false;
+    document.querySelectorAll('#asciiCtl .cs button').forEach((x,k)=>x.classList.toggle('on',k===0));
+    buildEffect();
+  });
+})();
+</script>
+</body>
+</html>
