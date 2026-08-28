@@ -55,6 +55,8 @@ Producir la **1ª entrega digital del 23-ago-2026** (filtro de finalistas): imá
 
 | PRES-027 | 2026-08-23 | **Deck a 13 slides: LA PIEL eliminada, su contenido vive en la 07.** Slide 07 = dos actos: montaje 4D (IFC actualizado, 385 elem, ahora en **sólido sombreado + contorno** como la 06 — el wireframe de malla se veía sucio) → botón CERTIFICACIÓN TÉRMICA: el modelo se achica/corre y entran 4 gráficos SVG con las series reales de NORMATIVA_TERMICA/INFORME_TERMICO.md (U vs límite · galería mes a mes · pérdida muro −37% · verano ΔT vs abatibles). Reparto de fases por centro vertical: 7·11·138·58·171. Horneador: 04_ASSETS/bake_montaje_fases.py. |
 
+| PRES-028 | 2026-08-23 | **FASE 2 — nueva estructura de trabajo en equipo** en Dropbox : carpeta por slide (01–16) para fuentes y productos,  con la **fuente única** (, la versión entregada en F1) y **protocolo de lock cooperativo** vía  (LIBRE/EN_EDICION + bitácora de versiones v31, v32…; toda IA lo lee antes de editar).  con scripts +  (manual autocontenido para cualquier IA del equipo, absorbe el encargo ARCHIVOS RSZ),  con los 5 IFC. Se creó  vacía. Los originales de F1 en  no se tocan. |
+
 *(Agregar aquí cada nueva decisión: paleta, tipografías, orden de slides, herramienta de video, etc.)*
 
 ## 3. Restricciones no negociables (de las bases)
